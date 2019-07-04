@@ -285,13 +285,25 @@ local function get_timerPos_from_p1_and_p2(p1, p2)
 end
 
 -- orientation is the rotation degrees passed to place_schematic: 0, 90, 180, or 270
+-- color is a value from 0 to 7 corresponding to the pixels in portal_palette.png
 local function get_param2_from_color_and_orientation(color, orientation)
 	assert(orientation, "no orientation passed")
 
+	-- wormhole nodes have a paramtype2 of colorfacedir, which means the
+	-- high 3 bits are palette, followed by 3 direction bits and 2 rotation bits.
+	-- We set the palette bits and rotation
 	return (orientation / 90) + color * 32
 end
 
 local function get_orientation_from_param2(param2)
+	-- Strip off the top 6 bits, unfortunately MT lua has no bitwise '&'
+	-- (high 3 bits are palette, followed by 3 direction bits then 2 rotation bits)
+	if param2 >= 128 then param2 = param2 - 128 end
+	if param2 >=  64 then param2 = param2 -  64 end
+	if param2 >=  32 then param2 = param2 -  32 end
+	if param2 >=  16 then param2 = param2 -  16 end
+	if param2 >=   8 then param2 = param2 -   8 end
+
 	return param2 * 90
 end
 
