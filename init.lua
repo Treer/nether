@@ -23,10 +23,10 @@
 
 -- Parameters
 
+local DEBUG = false
 local NETHER_DEPTH = -5000
 local TCAVE = 0.6
 local BLEND = 128
-local DEBUG = false
 
 
 -- 3D noise
@@ -285,8 +285,10 @@ local function get_timerPos_from_p1_and_p2(p1, p2)
 end
 
 -- orientation is the rotation degrees passed to place_schematic: 0, 90, 180, or 270
-local function get_param2_from_orientation(param2, orientation)
-	return orientation / 90
+local function get_param2_from_color_and_orientation(color, orientation)
+	assert(orientation, "no orientation passed")
+
+	return (orientation / 90) + color * 32
 end
 
 local function get_orientation_from_param2(param2)
@@ -337,7 +339,7 @@ local function set_portal_metadata(portal_definition, anchorPos, orientation, de
 	-- they define the bounding volume for the portal.
 	local p1, p2 = portal_definition.shape:get_p1_and_p2_from_anchorPos(anchorPos, orientation)
 	local p1_string, p2_string = minetest.pos_to_string(p1), minetest.pos_to_string(p2)
-	local param2 = get_param2_from_orientation(0, orientation)
+	local param2 = get_param2_from_color_and_orientation(portal_definition.wormhole_node_color, orientation)
 
 	local update_aborted-- using closures to allow the updateFunc to return extra information - by setting this variable
 
@@ -864,7 +866,7 @@ function run_wormhole(pos, time_elapsed)
 				minsize = 0.5,
 				maxsize = 1.5,
 				collisiondetection = false,
-				texture = "nether_particle.png",
+				texture = "nether_particle.png^[colorize:#808:alpha",
 				glow = 5
 			})
 		end
@@ -976,7 +978,9 @@ minetest.register_node("nether:portal", {
 	},
 	drawtype = "nodebox",
 	paramtype = "light",
-	paramtype2 = "facedir",
+	paramtype2 = "colorfacedir",
+	palette = "portal_palette.png",
+	post_effect_color = {a = 180, r = 128, g = 0, b = 128},
 	sunlight_propagates = true,
 	use_texture_alpha = true,
 	walkable = false,
@@ -986,7 +990,6 @@ minetest.register_node("nether:portal", {
 	is_ground_content = false,
 	drop = "",
 	light_source = 5,
-	post_effect_color = {a = 180, r = 128, g = 0, b = 128},
 	alpha = 192,
 	node_box = {
 		type = "fixed",
