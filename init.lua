@@ -240,6 +240,7 @@ local registered_portals = {
 		shape               = TraditionalPortalShape,
 		wormhole_node_name  = "nether:portal",
 		wormhole_node_color = 0,
+		particle_color      = "#808" -- todo: default to wormhole_node_color if not specified
 		frame_node_name     = "default:obsidian",
 		sound_ambient       = "portal_hum",
 		sound_ignite        = "",
@@ -991,7 +992,7 @@ minetest.register_node("nether:portal", {
 	drawtype = "nodebox",
 	paramtype = "light",
 	paramtype2 = "colorfacedir",
-	palette = "portal_palette.png",
+	palette = "nether_portal_palette.png",
 	post_effect_color = {a = 180, r = 128, g = 0, b = 128},
 	sunlight_propagates = true,
 	use_texture_alpha = true,
