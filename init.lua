@@ -240,7 +240,7 @@ local registered_portals = {
 		shape               = TraditionalPortalShape,
 		wormhole_node_name  = "nether:portal",
 		wormhole_node_color = 0,
-		particle_color      = "#808" -- todo: default to wormhole_node_color if not specified
+		particle_color      = "#808", -- todo: default to wormhole_node_color if not specified
 		frame_node_name     = "default:obsidian",
 		sound_ambient       = "portal_hum",
 		sound_ignite        = "",
@@ -261,6 +261,8 @@ local registered_portals = {
 		-- on_created
 	}
 }
+
+local frame_node_name_list = {["default:obsidian"] = true}
 
 
 local function get_timerPos_from_p1_and_p2(p1, p2)
@@ -675,9 +677,10 @@ end
 
 
 -- invoked when a player attempts to turn obsidian nodes into an open portal
-local function ignite_portal(ignition_pos)
+-- ignition_node_name is optional
+local function ignite_portal(ignition_pos, ignition_node_name)
 
-	local ignition_node_name = minetest.get_node(ignition_pos).name
+	if ignition_node_name == nil then ignition_node_name = minetest.get_node(ignition_pos).name end
 
 	-- find which sort of portals are made from the node that was clicked on
 	local portal_definition_list = list_portal_definitions_for_frame_node(ignition_node_name)
@@ -960,6 +963,52 @@ minetest.register_lbm({
 	end
 })
 
+function register_portal_ignition_item(item_name)
+
+	minetest.override_item(item_name, {
+		on_place = function(stack, _, pt)
+			if pt.under and minetest.get_node(pt.under).name == "default:obsidian" then
+				local done = ignite_portal(pt.under)
+				if done and not minetest.settings:get_bool("creative_mode") then
+					stack:take_item()
+				end
+			end
+	
+			return stack
+		end,
+	})
+
+end
+	
+
+function register_frame_node(frame_node_name)
+
+	local node = minetest.registered_nodes[frame_node_name]
+
+	-- copy the existing node definition
+	local extended_node_def = {}
+	for key, value in pairs(node) do extended_node_def[key] = value end
+
+	-- add portal portal functionality
+	extended_node_def.mesecons = {effector = {
+		action_on = function (pos, node)
+			ignite_portal(pos, node.name)
+		end,
+		action_off = function (pos, node)
+			extinguish_portal(pos, node.name)
+		end
+	}}
+	extended_node_def.on_destruct = function(pos)
+		extinguish_portal(pos, "default:obsidian")
+	end
+	extended_node_def.on_timer = function(pos, elapsed)
+		run_wormhole(pos, elapsed)
+		return true
+	end
+
+	-- replace the node with the new extended definition
+	minetest.register_node(":" .. frame_node_name, extended_node_def)
+end
 
 -- Nodes
 
@@ -1013,29 +1062,9 @@ minetest.register_node("nether:portal", {
 	groups = {not_in_creative_inventory = 1}
 })
 
-minetest.register_node(":default:obsidian", {
-	description = "Obsidian",
-	tiles = {"default_obsidian.png"},
-	is_ground_content = false,
-	sounds = default.node_sound_stone_defaults(),
-	groups = {cracky = 1, level = 2},
+register_frame_node("default:obsidian")
 
-	mesecons = {effector = {
-		action_on = function (pos, node)
-			ignite_portal(pos, node.name)
-		end,
-		action_off = function (pos, node)
-			extinguish_portal(pos, node.name)
-		end
-	}},
-	on_destruct = function(pos)
-		extinguish_portal(pos, "default:obsidian")
-	end,
-	on_timer = function(pos, elapsed)
-		run_wormhole(pos, elapsed)
-		return true
-	end
-})
+register_portal_ignition_item("default:mese_crystal_fragment")
 
 minetest.register_node("nether:rack", {
 	description = "Netherrack",
@@ -1118,28 +1147,16 @@ if minetest.get_modpath("moreblocks") then
 	})
 end
 
-stairs.register_stair_and_slab("brick", "nether:brick",
+stairs.register_stair_and_slab(
+	"brick",
+	"nether:brick",
 	{cracky=3, oddly_breakable_by_hand=1},
 	{"nether_brick.png"},
 	"nether stair",
 	"nether slab",
-	default.node_sound_stone_defaults())
+	default.node_sound_stone_defaults()
+)
 
-
--- Craftitems
-
-minetest.override_item("default:mese_crystal_fragment", {
-	on_place = function(stack, _, pt)
-		if pt.under and minetest.get_node(pt.under).name == "default:obsidian" then
-			local done = ignite_portal(pt.under)
-			if done and not minetest.settings:get_bool("creative_mode") then
-				stack:take_item()
-			end
-		end
-
-		return stack
-	end,
-})
 
 -- Crafting
 
