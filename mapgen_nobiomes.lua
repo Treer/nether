@@ -23,7 +23,7 @@ nether.DEPTH_FLOOR = -30912 -- this mapgen will create Nether all the way down
 
 -- Parameters
 
-local NETHER_DEPTH = nether.DEPTH
+local NETHER_DEPTH = nether.DEPTH_CEILING
 local TCAVE = 0.6
 local BLEND = 128
 
@@ -50,6 +50,8 @@ local yblmax = NETHER_DEPTH - BLEND * 2
 
 
 -- Mapgen
+
+dofile(nether.path .. "/mapgen_decorations.lua")
 
 -- Initialize noise object, localise noise and data buffers
 
@@ -189,6 +191,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 	end
 
 	vm:set_data(data)
+	minetest.generate_decorations(vm)
 	vm:set_lighting({day = 0, night = 0})
 	vm:calc_lighting()
 	vm:update_liquids()
