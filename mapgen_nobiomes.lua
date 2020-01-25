@@ -192,7 +192,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 
 	vm:set_data(data)
 	minetest.generate_decorations(vm)
-	vm:set_lighting({day = 0, night = 0})
+	vm:set_lighting({day = 0, night = 0}, minp, maxp)
 	vm:calc_lighting()
 	vm:update_liquids()
 	vm:write_to_map()
