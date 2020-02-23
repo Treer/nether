@@ -96,7 +96,38 @@ This portal is different to the others, rather than acting akin to a doorway it 
 			else
 				return destination_pos
 			end
+		end,
+
+		on_ignite = function(portalDef, anchorPos, orientation)
+
+			-- make some sparks fly
+			local p1, p2 = portalDef.shape:get_p1_and_p2_from_anchorPos(anchorPos, orientation)
+			local pos = vector.divide(vector.add(p1, p2), 2)
+
+			local textureName = portalDef.particle_texture
+			if type(textureName) == "table" then textureName = textureName.name end
+
+			minetest.add_particlespawner({
+				amount = 110,
+				time   = 0.1,
+				minpos = {x = pos.x - 1.2, y = pos.y + 0.5, z = pos.z - 1.2},
+				maxpos = {x = pos.x + 1.2, y = pos.y + 0.5, z = pos.z + 1.2},
+				minvel = {x = -1, y = 4, z = -1},
+				maxvel = {x =  1, y = 5, z =  1},
+				minacc = {x =  0, y =  0, z =  0},
+				maxacc = {x =  0, y =  0, z =  0},
+				minexptime = 0.1,
+				maxexptime = 0.6,
+				minsize = 0.3 * portalDef.particle_texture_scale,
+				maxsize = 0.9 * portalDef.particle_texture_scale,
+				collisiondetection = false,
+				texture = textureName .. "^[colorize:#FFF:alpha",
+				animation = portalDef.particle_texture_animation,
+				glow = 8
+			})
+
 		end
+
 	})
 
 end
@@ -196,7 +227,50 @@ Due to such difficulties, we never learned what determines the direction and dis
 
 				return destination_pos
 			end
+		end,
+
+		on_ignite = function(portalDef, anchorPos, orientation)
+
+			-- make some sparks fly
+			local p1, p2 = portalDef.shape:get_p1_and_p2_from_anchorPos(anchorPos, orientation)
+			local pos = vector.divide(vector.add(p1, p2), 2)
+
+			local textureName = portalDef.particle_texture
+			if type(textureName) == "table" then textureName = textureName.name end
+
+			local velocity, accel
+			if orientation == 0 then
+				velocity = {x = 0, y = 0, z = 15}
+			else
+				velocity = {x = 15, y = 0, z = 0}
+			end
+
+			local particleSpawnerDef = {
+				amount = 200,
+				time   = 0.1,
+				minpos = {x = pos.x - 2, y = pos.y - 2, z = pos.z - 2},
+				maxpos = {x = pos.x + 2, y = pos.y + 2, z = pos.z + 2},
+				minvel = velocity,
+				maxvel = velocity,
+				minacc = {x =  0, y =  0, z =  0},
+				maxacc = {x =  0, y =  0, z =  0},
+				minexptime = 0.1,
+				maxexptime = 0.5,
+				minsize = 0.8 * portalDef.particle_texture_scale,
+				maxsize = 1 * portalDef.particle_texture_scale,
+				collisiondetection = false,
+				texture = textureName .. "^[colorize:#AFF:alpha",
+				animation = portalDef.particle_texture_animation,
+				glow = 8
+			}
+
+			minetest.add_particlespawner(particleSpawnerDef)
+
+			velocity = vector.multiply(velocity, -1);
+			particleSpawnerDef.minvel, particleSpawnerDef.maxvel = velocity, velocity
+			minetest.add_particlespawner(particleSpawnerDef)
 		end
+
 	})
 
 end
