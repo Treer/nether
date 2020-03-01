@@ -113,9 +113,17 @@ metadata).
 
 ]]
 
+local facedir_up, facedir_north, facedir_south, facedir_east, facedir_west, facedir_down = 0, 4, 8, 12, 16, 20
+
 local __ = {name = "air", prob = 0}
 local AA = {name = "air", prob = 255, force_place = true}
-local OO = {name = "default:obsidian", prob = 255, force_place = true}
+local ON = {name = "default:obsidian", facedir = facedir_north, prob = 255, force_place = true}
+local OS = {name = "default:obsidian", facedir = facedir_south, prob = 255, force_place = true}
+local OE = {name = "default:obsidian", facedir = facedir_east,  prob = 255, force_place = true}
+local OW = {name = "default:obsidian", facedir = facedir_west,  prob = 255, force_place = true}
+local OU = {name = "default:obsidian", facedir = facedir_up,    prob = 255, force_place = true}
+local OD = {name = "default:obsidian", facedir = facedir_down,  prob = 255, force_place = true}
+local facedirNodeList = {ON, OS, OE, OW, OU, OD} -- a list of node references which should have the facedir value copied to param2 before placing a schematic
 
 -- This object defines a portal's shape, segregating the shape logic code from portal behaviour code.
 -- You can create a new "PortalShape" definition object which implements the same
@@ -285,25 +293,26 @@ nether.PortalShape_Traditional = {
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
-	
-			OO,OO,OO,OO,
-			OO,AA,AA,OO,
-			OO,AA,AA,OO,
-			OO,AA,AA,OO,
-			OO,OO,OO,OO,
-	
+
+			ON,OW,OE,ON,
+			OU,AA,AA,OU,
+			OU,AA,AA,OU,
+			OU,AA,AA,OU,
+			ON,OE,OW,ON,
+
 			__,__,__,__,
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
-	
+
 			__,__,__,__,
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
 			AA,AA,AA,AA,
-		}
+		},
+		facedirNodes = facedirNodeList
 	}
 } -- End of PortalShape_Traditional class
 
@@ -449,7 +458,7 @@ nether.PortalShape_Circular = {
 			__,__,AA,AA,AA,__,__,
 			__,__,__,__,__,__,__,
 			__,__,__,__,__,__,__,
-	
+
 			__,__,__,__,__,__,__,
 			__,AA,AA,AA,AA,AA,__,
 			__,AA,AA,AA,AA,AA,__,
@@ -457,23 +466,7 @@ nether.PortalShape_Circular = {
 			__,AA,AA,AA,AA,AA,__,
 			__,AA,AA,AA,AA,AA,__,
 			__,__,__,__,__,__,__,
-	
-			__,__,__,__,__,__,__,
-			__,AA,AA,AA,AA,AA,__,
-			AA,AA,AA,AA,AA,AA,AA,
-			AA,AA,AA,AA,AA,AA,AA,
-			AA,AA,AA,AA,AA,AA,AA,
-			__,AA,AA,AA,AA,AA,__,
-			__,__,AA,AA,AA,__,__,
-	
-			__,__,OO,OO,OO,__,__,
-			__,OO,AA,AA,AA,OO,__,
-			OO,AA,AA,AA,AA,AA,OO,
-			OO,AA,AA,AA,AA,AA,OO,
-			OO,AA,AA,AA,AA,AA,OO,
-			__,OO,AA,AA,AA,OO,__,
-			__,__,OO,OO,OO,__,__,
-	
+
 			__,__,__,__,__,__,__,
 			__,AA,AA,AA,AA,AA,__,
 			AA,AA,AA,AA,AA,AA,AA,
@@ -481,7 +474,23 @@ nether.PortalShape_Circular = {
 			AA,AA,AA,AA,AA,AA,AA,
 			__,AA,AA,AA,AA,AA,__,
 			__,__,AA,AA,AA,__,__,
-	
+
+			__,__,OE,OE,OE,__,__,
+			__,ON,AA,AA,AA,ON,__,
+			OU,AA,AA,AA,AA,AA,OD,
+			OU,AA,AA,AA,AA,AA,OD,
+			OU,AA,AA,AA,AA,AA,OD,
+			__,ON,AA,AA,AA,ON,__,
+			__,__,OW,OW,OW,__,__,
+
+			__,__,__,__,__,__,__,
+			__,AA,AA,AA,AA,AA,__,
+			AA,AA,AA,AA,AA,AA,AA,
+			AA,AA,AA,AA,AA,AA,AA,
+			AA,AA,AA,AA,AA,AA,AA,
+			__,AA,AA,AA,AA,AA,__,
+			__,__,AA,AA,AA,__,__,
+
 			__,__,__,__,__,__,__,
 			__,AA,AA,AA,AA,AA,__,
 			__,AA,AA,AA,AA,AA,__,
@@ -497,7 +506,8 @@ nether.PortalShape_Circular = {
 			__,__,AA,AA,AA,__,__,
 			__,__,__,__,__,__,__,
 			__,__,__,__,__,__,__,
-		}
+		},
+		facedirNodes = facedirNodeList
 	}
 } -- End of PortalShape_Circular class
 
@@ -597,35 +607,36 @@ nether.PortalShape_Platform = {
 		size = {x = 5, y = 5, z = 5},
 		data = { -- note that data is upside down
 			__,__,__,__,__,
-			OO,OO,OO,OO,OO,
+			OU,OE,OE,OE,OU,
 			__,AA,AA,AA,__,
 			__,AA,AA,AA,__,
 			__,__,__,__,__,
-	
-			__,OO,OO,OO,__,
-			OO,AA,AA,AA,OO,
+
+			__,OU,OE,OU,__,
+			ON,AA,AA,AA,OS,
 			AA,AA,AA,AA,AA,
 			AA,AA,AA,AA,AA,
 			__,AA,AA,AA,__,
-	
-			__,OO,OO,OO,__,
-			OO,AA,AA,AA,OO,
+
+			__,ON,OD,OS,__,
+			ON,AA,AA,AA,OS,
 			AA,AA,AA,AA,AA,
 			AA,AA,AA,AA,AA,
 			__,AA,AA,AA,__,
-	
-			__,OO,OO,OO,__,
-			OO,AA,AA,AA,OO,
+
+			__,OU,OW,OU,__,
+			ON,AA,AA,AA,OS,
 			AA,AA,AA,AA,AA,
 			AA,AA,AA,AA,AA,
 			__,AA,AA,AA,__,
-	
+
 			__,__,__,__,__,
-			OO,OO,OO,OO,OO,
+			OU,OW,OW,OW,OU,
 			__,AA,AA,AA,__,
 			__,AA,AA,AA,__,
 			__,__,__,__,__,
-		}
+		},
+		facedirNodes = facedirNodeList
 	}
 } -- End of PortalShape_Platform class
 
@@ -1137,7 +1148,54 @@ local function is_within_portal_frame(portal_definition, pos)
 end
 
 
+
+-- facedir_cycles table from screwdriver2 mod / https://forum.minetest.net/viewtopic.php?p=73195&sid=1d2d2e4e76ce2ef9c84646481a4b84bc#p73195
+-- "How to rotate (clockwise) by axis from any facedir:"
+local facedir_cycles = {
+	x = {{12,13,14,15},{16,19,18,17},{ 0, 4,22, 8},{ 1, 5,23, 9},{ 2, 6,20,10},{ 3, 7,21,11}},
+	y = {{ 0, 1, 2, 3},{20,23,22,21},{ 4,13,10,19},{ 8,17, 6,15},{12, 9,18, 7},{16, 5,14,11}},
+	z = {{ 4, 5, 6, 7},{ 8,11,10, 9},{ 0,16,20,12},{ 1,17,21,13},{ 2,18,22,14},{ 3,19,23,15}},
+}
+
+local function rotate_facedir_yaw(param2, orientation)
+
+	local low5bits = param2 - (math.floor(param2 / 32) * 32)
+	if low5bits < 24 then
+		for _, cycle in ipairs(facedir_cycles.y) do
+			-- Find the current facedir
+			for i, fd in ipairs(cycle) do
+				if fd == low5bits then
+					local yaw = i - 1;
+					local rotatedYaw = (yaw + orientation) % 4
+					return param2 - low5bits + cycle[1 + rotatedYaw]
+				end
+			end
+		end
+	end
+	return param2;
+end
+
+-- sets param2 values in the schematic to match rotated facedir values, or 0 if the nodedef doesn't use facedir
+local function set_schematic_param2(node_name, schematic_table, orientation)
+
+	local paramtype2 = minetest.registered_nodes[node_name].paramtype2
+	local isFacedir = paramtype2 == "facedir" or paramtype2 == "colorfacedir"
+
+	if schematic_table.facedirNodes ~= nil then
+		for _, v in ipairs(schematic_table.facedirNodes) do
+			if isFacedir and v.facedir ~= nil then
+				v.param2 = rotate_facedir_yaw(v.facedir, orientation)
+			else
+				v.param2 = 0
+			end
+		end
+	end
+end
+
+
 local function build_portal(portal_definition, anchorPos, orientation, destination_wormholePos)
+
+	set_schematic_param2(portal_definition.frame_node_name, portal_definition.shape.schematic, orientation)
 
 	minetest.place_schematic(
 		portal_definition.shape.get_schematicPos_from_anchorPos(anchorPos, orientation),
@@ -1178,8 +1236,8 @@ local function remote_portal_checkup(elapsed, portal_definition, anchorPos, orie
 	local wormholePos = portal_definition.shape.get_wormholePos_from_anchorPos(anchorPos, orientation)
 	local wormhole_node = minetest.get_node_or_nil(wormholePos)
 
-	local portalFound, portalLit = false, false	
-	if wormhole_node ~= nil and wormhole_node.name == portal_definition.wormhole_node_name then 
+	local portalFound, portalLit = false, false
+	if wormhole_node ~= nil and wormhole_node.name == portal_definition.wormhole_node_name then
 		-- a wormhole node was there, but check the whole frame is intact
 		portalFound, portalLit = is_portal_at_anchorPos(portal_definition, anchorPos, orientation, false)
 	end
