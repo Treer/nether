@@ -53,9 +53,11 @@ local function override_underground_biomes()
 	--    To avoid the engine side of mapgen becoming overcomplex the approach is to require mods
 	--    to do slightly more complex stuff in Lua.
 
-	-- take a copy of all biomes and decorations
-	local registered_biomes_copy = {}
+	-- take a copy of all biomes, decorations, and ores. Regregistering a biome changes its ID, so
+	-- any decorations or ores using the 'biomes' field must afterwards be cleared and re-registered.
+	local registered_biomes_copy      = {}
 	local registered_decorations_copy = {}
+	local registered_ores_copy        = {}
 
 	for old_biome_key, old_biome_def in pairs(minetest.registered_biomes) do
 	   registered_biomes_copy[old_biome_key] = old_biome_def
@@ -63,9 +65,13 @@ local function override_underground_biomes()
 	for old_decoration_key, old_decoration_def in pairs(minetest.registered_decorations) do
 	   registered_decorations_copy[old_decoration_key] = old_decoration_def
 	end
-
-	-- clear biomes and decorations
+	for old_ore_key, old_ore_def in pairs(minetest.registered_ores) do
+		registered_ores_copy[old_ore_key] = old_ore_def
+	 end
+ 
+	-- clear biomes, decorations, and ores
 	minetest.clear_registered_decorations()
+	minetest.clear_registered_ores()
 	minetest.clear_registered_biomes()
 
 	-- Restore biomes, adjusted to not overlap the Nether
@@ -95,7 +101,11 @@ local function override_underground_biomes()
 	for decoration_key, new_decoration_def in pairs(registered_decorations_copy) do
 	   minetest.register_decoration(new_decoration_def)
 	end
-end
+	-- Restore biome ores
+	for ore_key, new_ore_def in pairs(registered_ores_copy) do
+		minetest.register_ore(new_ore_def)
+	 end
+ end
 
 -- Shift any overlapping biomes out of the way before we create the Nether biomes
 override_underground_biomes()
