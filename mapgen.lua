@@ -123,7 +123,7 @@ minetest.register_biome({
 	node_stone  = "nether:native_mapgen", -- nether:native_mapgen is used here to prevent the native mapgen from placing ores and decorations.
 	node_filler = "nether:native_mapgen", -- The lua on_generate will transform nether:rack_native into nether:rack then decorate and add ores.
 	node_dungeon = "nether:brick",
-	--node_dungeon_alt = "default:mossycobble",
+	node_dungeon_alt = "nether:brick_cracked",
 	node_dungeon_stair = "stairs:stair_nether_brick",
 	-- Setting node_cave_liquid to "air" avoids the need to filter lava and water out of the mapchunk and
 	-- surrounding shell (overdraw nodes beyond the mapchunk).
@@ -206,7 +206,8 @@ local yblmax = NETHER_CEILING - BLEND * 2
 
 local c_air              = minetest.get_content_id("air")
 local c_netherrack       = minetest.get_content_id("nether:rack")
-local c_netherbrick      = minetest.get_content_id("nether:brick")
+local c_dungeonbrick     = minetest.get_content_id("nether:brick")
+local c_dungeonbrick_alt = minetest.get_content_id("nether:brick_cracked")
 local c_netherbrick_slab = minetest.get_content_id("stairs:slab_nether_brick")
 local c_netherfence      = minetest.get_content_id("nether:fence_nether_brick")
 local c_glowstone        = minetest.get_content_id("nether:glowstone")
@@ -215,6 +216,10 @@ local c_native_mapgen    = minetest.get_content_id("nether:native_mapgen")
 
 
 -- Dungeon excavation functions
+
+function is_dungeon_brick(node_id)
+	return node_id == c_dungeonbrick or node_id == c_dungeonbrick_alt
+end
 
 function build_dungeon_room_list(data, area)
 
@@ -346,20 +351,22 @@ function decorate_dungeons(data, area, rooms)
 			local window_y  = roomInfo.y + math_min(2, room_max.y - roomInfo.y - 1)
 
 			if room_seed % 3 == 0 and room_max.y < maxEdge.y then
-				-- Glowstone chandelier
+				-- Glowstone chandelier (feel free to replace with a fancy schematic)
 				local vi = area:index(roomInfo.x, room_max.y + 1, roomInfo.z)
-				if data[vi] == c_netherbrick then data[vi] = c_glowstone end
+				if is_dungeon_brick(data[vi]) then data[vi] = c_glowstone end
 
 			elseif room_seed % 4 == 0 and room_min.y > minEdge.y
 				   and room_min.x > minEdge.x and room_max.x < maxEdge.x
 				   and room_min.z > minEdge.z and room_max.z < maxEdge.z then
 				-- lava well (feel free to replace with a fancy schematic)
 				local vi = area:index(roomInfo.x, room_min.y, roomInfo.z)
-				if data[vi - yStride] == c_netherbrick then data[vi - yStride] = c_lava_source end
-				if data[vi - zStride] == c_air then data[vi - zStride] = c_netherbrick_slab end
-				if data[vi + zStride] == c_air then data[vi + zStride] = c_netherbrick_slab end
-				if data[vi - xStride] == c_air then data[vi - xStride] = c_netherbrick_slab end
-				if data[vi + xStride] == c_air then data[vi + xStride] = c_netherbrick_slab end
+				if is_dungeon_brick(data[vi - yStride]) then
+					data[vi - yStride] = c_lava_source
+					if data[vi - zStride] == c_air then data[vi - zStride] = c_netherbrick_slab end
+					if data[vi + zStride] == c_air then data[vi + zStride] = c_netherbrick_slab end
+					if data[vi - xStride] == c_air then data[vi - xStride] = c_netherbrick_slab end
+					if data[vi + xStride] == c_air then data[vi + xStride] = c_netherbrick_slab end
+				end
 			end
 
 			-- Barred windows
@@ -377,15 +384,15 @@ function decorate_dungeons(data, area, rooms)
 				local vi_max = area:index(room_max.x + 1, window_y, roomInfo.z)
 				local locations = {-zStride, zStride, -zStride + yStride, zStride + yStride}
 				for _, offset in ipairs(locations) do
-					if data[vi_min + offset] == c_netherbrick then data[vi_min + offset] = window_node end
-					if data[vi_max + offset] == c_netherbrick then data[vi_max + offset] = window_node end
+					if is_dungeon_brick(data[vi_min + offset]) then data[vi_min + offset] = window_node end
+					if is_dungeon_brick(data[vi_max + offset]) then data[vi_max + offset] = window_node end
 				end
 				vi_min = area:index(roomInfo.x, window_y, room_min.z - 1)
 				vi_max = area:index(roomInfo.x, window_y, room_max.z + 1)
 				locations = {-xStride, xStride, -xStride + yStride, xStride + yStride}
 				for _, offset in ipairs(locations) do
-					if data[vi_min + offset] == c_netherbrick then data[vi_min + offset] = window_node end
-					if data[vi_max + offset] == c_netherbrick then data[vi_max + offset] = window_node end
+					if is_dungeon_brick(data[vi_min + offset]) then data[vi_min + offset] = window_node end
+					if is_dungeon_brick(data[vi_max + offset]) then data[vi_max + offset] = window_node end
 				end
 			end
 
@@ -453,10 +460,10 @@ local function on_generated(minp, maxp, seed)
 
 	vm:set_data(data)
 
+	minetest.generate_ores(vm)
 	-- avoid generating decorations on the underside of the bottom of the nether
 	if minp.y > NETHER_FLOOR and maxp.y < NETHER_CEILING then minetest.generate_decorations(vm) end
 
-	minetest.generate_ores(vm)
 	vm:set_lighting({day = 0, night = 0}, minp, maxp)
 	vm:calc_lighting()
 	vm:update_liquids()

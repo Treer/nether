@@ -111,6 +111,15 @@ minetest.register_node("nether:brick_compressed", {
 	sounds = default.node_sound_stone_defaults(),
 })
 
+-- A decorative node which can only be obtained from dungeons or structures
+minetest.register_node("nether:brick_cracked", {
+	description = S("Cracked Nether Brick"),
+	tiles = {"nether_brick_cracked.png"},
+	is_ground_content = false,
+	groups = {cracky = 2, level = 2},
+	sounds = default.node_sound_stone_defaults(),
+})
+
 local fence_texture =
 	"default_fence_overlay.png^nether_brick.png^default_fence_overlay.png^[makealpha:255,126,126"
 
