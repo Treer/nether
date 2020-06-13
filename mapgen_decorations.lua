@@ -29,6 +29,7 @@ local _  = {name = "air",                     prob = 0}
 local A  = {name = "air",                     prob = 255, force_place = true}
 local G  = {name = "nether:glowstone",        prob = 255, force_place = true}
 local N  = {name = "nether:rack",             prob = 255}
+local B  = {name = "nether:basalt",           prob = 255}
 local S  = {name = "nether:sand",             prob = 255, force_place = true}
 local L  = {name = "default:lava_source",     prob = 255, force_place = true}
 local F  = {name = "nether:fumarole",         prob = 255, force_place = true}
@@ -146,6 +147,143 @@ minetest.register_decoration({
     flags = "place_center_x,place_center_z,all_ceilings",
     place_offset_y=-3
 })
+
+
+local schematic_BasaltStalactite = {
+    size = {x = 3, y = 20, z = 3},
+    data = { -- note that data is upside down
+
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, B, _,
+        _, B, _,
+        _, B, _,
+        B, B, B,
+        B, B, B,
+        B, B, B,
+        B, B, B,
+
+        _, B, _,  -- ypos 0, prob 85% (218/255)
+        _, B, _,  -- ypos 1, prob 85% (218/255)
+        _, B, _,  -- ypos 2, prob 85% (218/255)
+        _, B, _,  -- ypos 3, prob 85% (218/255)
+        _, B, _,  -- ypos 4, prob 85% (218/255)
+        _, B, _,  -- ypos 5, prob 85% (218/255)
+        _, B, _,  -- ypos 6, prob 85% (218/255)
+        _, B, _,  -- ypos 7, prob 85% (218/255)
+        _, B, _,  -- ypos 8, prob 85% (218/255)
+        _, B, B,  -- ypos 9, prob 50% (128/256) to make half of stalactites asymmetric
+        _, B, B,  -- ypos 10, prob 50% (128/256) to make half of stalactites asymmetric
+        _, B, B,  -- ypos 11, prob 50% (128/256) to make half of stalactites asymmetric
+        _, B, B,  -- ypos 12, prob 50% (128/256) to make half of stalactites asymmetric
+        B, B, B,  -- ypos 13, prob 75% (192/256)
+        B, B, B,  -- ypos 14, prob 75% (192/256)
+        B, B, B,  -- ypos 15, prob 100%
+        B, B, B,  -- ypos 16, prob 100%
+        B, B, B,  -- ypos 17, prob 100%
+        B, B, B,  -- ypos 18, prob 100%
+        B, B, B,  -- ypos 19, prob 75% (192/256)
+
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, _, _,
+        _, B, _,
+        _, B, _,
+        _, B, _,
+        _, B, _,
+        B, B, B,
+        B, B, B,
+        B, B, B,
+        B, B, B,
+
+    },
+    -- Y-slice probabilities do not function correctly for ceiling schematic
+    -- decorations because they are inverted, so ypos numbers have been inverted
+    -- to match, and a larger offset in place_offset_y should be used (e.g. -3).
+    yslice_prob = {
+        {ypos = 19, prob = 192},
+        {ypos = 14, prob = 192},
+        {ypos = 13, prob = 192},
+        {ypos = 12, prob = 128},
+        {ypos = 11, prob = 128},
+        {ypos = 10, prob = 128},
+        {ypos =  9, prob = 128},
+        {ypos =  8, prob = 218},
+        {ypos =  7, prob = 218},
+        {ypos =  6, prob = 218},
+        {ypos =  5, prob = 218},
+        {ypos =  4, prob = 218},
+        {ypos =  3, prob = 218},
+        {ypos =  2, prob = 218},
+        {ypos =  1, prob = 218},
+        {ypos =  0, prob = 218}
+    }
+}
+
+minetest.register_decoration({
+    name = "Basalt glowstone stalactite",
+    deco_type = "schematic",
+    place_on = "nether:basalt",
+    sidelen = 80,
+    fill_ratio = 0.0003,
+    biomes = {"nether_caverns"},
+    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
+    y_min = nether.DEPTH_FLOOR,
+    schematic = schematic_GlowstoneStalactite,
+    replacements = {["nether:rack"] = "nether:basalt"},
+    flags = "place_center_x,place_center_z,force_placement,all_ceilings",
+    place_offset_y=-3
+})
+
+minetest.register_decoration({
+    name = "Basalt fat stalactite",
+    deco_type = "schematic",
+    place_on = "nether:basalt",
+    sidelen = 80,
+    fill_ratio = 0.0003,
+    biomes = {"nether_caverns"},
+    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
+    y_min = nether.DEPTH_FLOOR,
+    schematic = schematic_GlowstoneStalactite,
+    replacements = {["nether:rack"] = "nether:basalt", ["nether:glowstone"] = "nether:basalt"},
+    flags = "place_center_x,place_center_z,force_placement,all_ceilings",
+    place_offset_y=-3
+})
+
+minetest.register_decoration({
+    name = "Basalt stalactite",
+    deco_type = "schematic",
+    place_on = "nether:basalt",
+    sidelen = 80,
+    fill_ratio = 0.001,
+    biomes = {"nether_caverns"},
+    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
+    y_min = nether.DEPTH_FLOOR,
+    schematic = schematic_BasaltStalactite,
+    flags = "place_center_x,place_center_z,force_placement,all_ceilings",
+    place_offset_y=-6
+})
+
 
 
 -- =======================================

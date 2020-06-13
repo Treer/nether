@@ -120,6 +120,81 @@ minetest.register_node("nether:brick_cracked", {
 	sounds = default.node_sound_stone_defaults(),
 })
 
+-- Basalt is intended as another portalstone - an alternative to obsidian that's available
+-- for other mods to use. It cannot be found in the regions of the nether where portals
+-- link to, so requires a journey to obtain.
+minetest.register_node("nether:basalt", {
+	description = S("Basalt"),
+	tiles = {
+		"nether_basalt.png",
+		"nether_basalt.png",
+		"nether_basalt_side.png",
+		"nether_basalt_side.png",
+		"nether_basalt_side.png",
+		"nether_basalt_side.png"
+	},
+	is_ground_content = true,
+	groups = {cracky = 2, level = 3},
+	sounds = default.node_sound_stone_defaults(),
+})
+
+minetest.register_node("nether:lava_crust", {
+    description = "Lava crust",
+    tiles = {
+        {
+            name="nether_lava_crust_animated.png",
+            backface_culling=true,
+            tileable_vertical=true,
+            tileable_horizontal=true,
+            align_style="world",
+            scale=2,
+            animation = {
+                type = "vertical_frames",
+                aspect_w = 32,
+                aspect_h = 32,
+                length = 2,
+            },
+        }
+    },
+
+    after_destruct = function(pos)
+
+        local lava_particlespawn_def = {
+            amount = 6,
+            time = 0.1,
+            minpos = {x=pos.x - 0.5, y=pos.y + 0.3, z=pos.z - 0.5},
+            maxpos = {x=pos.x + 0.5, y=pos.y + 0.5, z=pos.z + 0.5},
+            minvel = {x = -1.5, y = 1.5, z = -1.5},
+            maxvel = {x =  1.5, y = 5,   z =  1.5},
+            minacc = {x = 0, y = -10, z = 0},
+            maxacc = {x = 0, y = -10, z = 0},
+            minexptime = 1,
+            maxexptime = 1,
+            minsize = .2,
+            maxsize = .8,
+            texture = "^[colorize:#A00:255",
+            glow = 8
+        }
+        minetest.add_particlespawner(lava_particlespawn_def)
+        lava_particlespawn_def.texture = "^[colorize:#FB0:255"
+        lava_particlespawn_def.maxvel.y = 3
+        lava_particlespawn_def.glow = 12
+        minetest.add_particlespawner(lava_particlespawn_def)
+
+        minetest.set_node(pos, {name = "default:lava_source"})
+    end,
+    paramtype = "light",
+    light_source = default.LIGHT_MAX - 3,
+    buildable_to = true,
+    is_ground_content = true,
+    drop = "",
+    liquid_viscosity = 7,
+    damage_per_second = 4 * 2,
+    groups = {oddly_breakable_by_hand = 3, igniter = 1},
+})
+
+
+
 local fence_texture =
 	"default_fence_overlay.png^nether_brick.png^default_fence_overlay.png^[makealpha:255,126,126"
 

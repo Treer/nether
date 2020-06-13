@@ -30,7 +30,7 @@ local BLEND = 128
 
 -- Stuff
 
-local math_max, math_min = math.max, math.min -- avoid needing table lookups each time a common math function is invoked
+local math_max, math_min, math_abs, math_floor = math.max, math.min, math.abs, math.floor -- avoid needing table lookups each time a common math function is invoked
 
 if minetest.read_schematic == nil then
 	-- Using biomes to create the Nether requires the ability for biomes to set "node_cave_liquid = air".
@@ -158,8 +158,19 @@ minetest.register_ore({
 
 minetest.register_ore({
 	ore_type       = "scatter",
+	ore            = "nether:lava_crust",
+	wherein        = "nether:basalt",
+	clust_scarcity = 20 * 20 * 20,
+	clust_num_ores = 3,
+	clust_size     = 2,
+	y_max = NETHER_CEILING,
+	y_min = NETHER_FLOOR,
+})
+
+minetest.register_ore({
+	ore_type       = "scatter",
 	ore            = "default:lava_source",
-	wherein        = "nether:rack",
+	wherein        = {"nether:rack", "nether:basalt"},
 	clust_scarcity = 36 * 36 * 36,
 	clust_num_ores = 4,
 	clust_size     = 2,
@@ -212,7 +223,12 @@ local c_netherbrick_slab = minetest.get_content_id("stairs:slab_nether_brick")
 local c_netherfence      = minetest.get_content_id("nether:fence_nether_brick")
 local c_glowstone        = minetest.get_content_id("nether:glowstone")
 local c_lava_source      = minetest.get_content_id("default:lava_source")
+local c_lava_crust       = minetest.get_content_id("nether:lava_crust")
+local c_basalt           = minetest.get_content_id("nether:basalt")
 local c_native_mapgen    = minetest.get_content_id("nether:native_mapgen")
+
+
+local c_debug = minetest.get_content_id("default:glass")
 
 
 -- Dungeon excavation functions
@@ -402,6 +418,77 @@ function decorate_dungeons(data, area, rooms)
 end
 
 
+local REGION_BUFFER_THICKNESS = 0.2
+local CENTER_REGION_LIMIT     = TCAVE - REGION_BUFFER_THICKNESS
+local BASALT_LIMIT            = CENTER_REGION_LIMIT - 0.1
+local SURFACE_CRUST_LIMIT     = BASALT_LIMIT * 0.25
+local CRUST_LIMIT             = BASALT_LIMIT * 0.85
+
+-- Returns (absolute height, fractional distance from ceiling or sea floor)
+-- the fractional distance from ceiling or sea floor is a value between 0 and 1 (inclusive)
+-- Note it may find the most relevent sea-level - not necesssarily the one you are closest
+-- to, since the space above the sea reaches much higher than the depth below the sea.
+local function find_nearest_lava_sealevel(y)
+	-- todo: constrain y to be not near the bounds of the nether
+	-- todo: add some random adj at each level, seeded only by the level height
+	local sealevel = math.floor((y + 100) / 200) * 200
+
+	local cavern_limits_fraction
+	local height_above_sea = y - sealevel
+	if height_above_sea >= 0 then
+		cavern_limits_fraction = math_min(1, height_above_sea / 95)
+	else
+		-- approaches 1 much faster as the lava sea is shallower than the cavern above it
+		cavern_limits_fraction = math_min(1, -height_above_sea / 40)
+	end
+
+	return sealevel, cavern_limits_fraction
+end
+
+
+
+local caveperlin
+minetest.register_chatcommand("whereami",
+    {
+        description = "Describes which region of the nether the player is in",
+		func = function(name, param)
+
+			caveperlin = caveperlin or minetest.get_perlin(np_cave)
+
+			local player = minetest.get_player_by_name(name)
+			local pos = vector.round(player:get_pos())
+			local densityNoise = caveperlin:get_3d(pos)
+			local desc
+
+			if densityNoise > 0.6 then
+				desc = "Positive nether"
+			elseif densityNoise < -0.6 then
+				desc = "Negative nether"
+			elseif math_abs(densityNoise) < CENTER_REGION_LIMIT then
+				desc =  "Center region"
+			elseif densityNoise > 0 then
+				desc =  "Shell between positive nether and center region"
+			else
+				desc = "Shell between negative nether and center region"
+			end
+
+			local sea_level, cavern_limits_fraction = find_nearest_lava_sealevel(pos.y)
+			local sea_pos = pos.y - sea_level
+			if sea_pos > 0 then
+				desc = desc .. ", " .. sea_pos .. "m above lava-sea level"
+			else
+				desc = desc .. ", " .. sea_pos .. "m below lava-sea level"
+			end
+
+			return true, (math_floor(densityNoise * 1000) / 1000) .. " - " .. desc
+		end
+	}
+)
+
+
+local pathway_chunk_count = 0
+local total_chunk_count = 0
+
 -- On-generated function
 
 local function on_generated(minp, maxp, seed)
@@ -426,12 +513,34 @@ local function on_generated(minp, maxp, seed)
 
 
 	local dungeonRooms = build_dungeon_room_list(data, area)
+	local abs_cave_noise
+	local shelldepth, shell_thickness_adj
+	local abs_cave_noise_adjusted
 
-	for y = y0, y1 do -- Y loop first to minimise tcave calculations
+	local contains_nether = false
+	local contains_shell  = false
+	local contains_center = false
+	local contains_ocean = false
+
+
+	for y = y0, y1 do -- Y loop first to minimise tcave & lava-sea calculations
 
 		local tcave = TCAVE
 		if y > yblmax then tcave = TCAVE + ((y - yblmax) / BLEND) ^ 2 end
 		if y < yblmin then tcave = TCAVE + ((yblmin - y) / BLEND) ^ 2 end
+
+		local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(y)
+		local above_lavasea = y > sea_level
+		local below_lavasea = y < sea_level
+		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
+		--[[
+		local lavasea_noise_adj
+		if distance_above_lavasea > 0 then
+			lavasea_noise_adj = math_abs(distance_above_lavasea) / 200 -- range 0 to 0.5
+		else
+			lavasea_noise_adj = math_abs(distance_above_lavasea) / 40  -- range 0 to 2.5
+		end]]
+
 
 		for z = z0, z1 do
 			local vi = area:index(x0, y, z) -- Initial voxelmanip index
@@ -441,10 +550,53 @@ local function on_generated(minp, maxp, seed)
 
 				local id = data[vi] -- Existing node
 
-				if nvals_cave[ni] > tcave then
+				local cave_noise = nvals_cave[ni]
+
+				if cave_noise > tcave then
+					-- prime region
 					data[vi] = c_air
+					contains_nether = true
+
+				elseif -cave_noise > tcave then
+					-- secondary/spare region
+					data[vi] = c_air
+
 				elseif id == c_air or id == c_native_mapgen then
-					data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
+
+					abs_cave_noise = math_abs(cave_noise)
+					abs_cave_noise_adjusted = abs_cave_noise + cavern_noise_adj
+					--shelldepth = (tcave - abs_cave_noise)
+					--density_adj = cavern_limit_distance * 0.2 --
+
+					--[[if abs_cave_noise < 0.1 then
+						-- basalt realms still contain netherrack
+						data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
+					else]]if above_lavasea and abs_cave_noise_adjusted < BASALT_LIMIT then
+						data[vi] = c_air
+						contains_center = true
+					elseif abs_cave_noise_adjusted < SURFACE_CRUST_LIMIT or (below_lavasea and abs_cave_noise_adjusted < CRUST_LIMIT) then
+						data[vi] = c_lava_source
+						contains_ocean = true
+					elseif abs_cave_noise_adjusted < BASALT_LIMIT then
+						data[vi] = c_lava_crust
+						contains_ocean = true
+					elseif abs_cave_noise < CENTER_REGION_LIMIT then
+						data[vi] = c_basalt
+					else
+						-- the shell seperating the basalt realm from the rest of the nether...
+						-- put some holes in it
+						contains_shell = true
+--[[
+						local noise_with_hole = abs_cave_noise + (1 - (math_abs(5 - distance_above_lavasea) / 5)) * .5
+						if noise_with_hole > tcave then
+							-- passageway to the bassalt realm
+							data[vi] = c_debug
+						elseif shelldepth > .14 then
+							data[vi] = c_basalt
+						else]]
+							data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
+						--end
+					end
 				end
 
 				ni = ni + 1
@@ -452,6 +604,15 @@ local function on_generated(minp, maxp, seed)
 			end
 		end
 	end
+
+	total_chunk_count = total_chunk_count + 1
+	if contains_nether and contains_shell and contains_center and contains_ocean then
+		pathway_chunk_count = pathway_chunk_count + 1
+	end
+	if total_chunk_count % 50 == 0 then
+		minetest.chat_send_all(pathway_chunk_count .. " of " .. total_chunk_count .. " chunks contain both nether and lava-sea (" .. math_floor(pathway_chunk_count * 100 / total_chunk_count) .. "%)")
+	end
+
 
 	-- any air from the native mapgen has been replaced by netherrack, but we
 	-- don't want netherrack inside dungeons, so fill known dungeon rooms with air.
