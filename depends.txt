@@ -1,8 +1,9 @@
-stairs
 default
-moreblocks?
-mesecons?
-loot?
-dungeon_loot?
+stairs
+bucket?
 doc_basics?
+dungeon_loot?
 fire?
+loot?
+mesecons?
+moreblocks?

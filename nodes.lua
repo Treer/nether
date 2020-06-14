@@ -253,6 +253,54 @@ if minetest.get_modpath("moreblocks") then
 end
 
 
+-- Lava-sea source
+-- This is a lava source using a different animated texture so that each node
+-- is out of phase in its animation from its neighbour. This prevents the lava
+-- sea from visually clumping together into a patchwork of 16x16 squares.
+local lavasea_source = {}
+local lava_source = minetest.registered_nodes["default:lava_source"]
+for key, value in pairs(lava_source) do lavasea_source[key] = value end
+lavasea_source.name = nil
+lavasea_source.tiles = {
+	{
+		name = "nether_lava_source_animated.png",
+		backface_culling = false,
+		align_style="world",
+		scale=2,
+		animation = {
+			type = "vertical_frames",
+			aspect_w = 32,
+			aspect_h = 32,
+			length = 3.0,
+		},
+	},
+	{
+		name = "nether_lava_source_animated.png",
+		backface_culling = true,
+		align_style="world",
+		scale=2,
+		animation = {
+			type = "vertical_frames",
+			aspect_w = 32,
+			aspect_h = 32,
+			length = 3.0,
+		},
+	},
+}
+minetest.register_node("nether:lava_source", lavasea_source)
+
+if minetest.get_modpath("bucket") then
+	-- register bucket of Lava-sea source - but make it just the same bucket as default lava
+
+	local lavasea_bucket = {}
+	local lava_bucket = bucket.liquids["default:lava_source"]
+	for key, value in pairs(lava_bucket) do lavasea_bucket[key] = value end
+
+	lavasea_bucket.source = "nether:lava_source"
+	bucket.liquids[lavasea_bucket.source] = lavasea_bucket
+end
+
+
 -- Fumaroles (Chimney's)
 
 local function fumarole_startTimer(pos, timeout_factor)
