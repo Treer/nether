@@ -503,9 +503,37 @@ function draw_pathway(data, area, nether_pos, center_pos)
 	local ystride = area.ystride
 	local zstride = area.zstride
 
+	-- first pass: record path details
+	local linedata = {}
+	local last_pos = {}
+	local line_index = 1
+	local first_filled_index, boundary_index, last_filled_index
 	for i = 0, dist do
-		local pos = vector.round(vector.add(center_pos, vector.multiply(step, i / dist)))
-		local vi = area:indexp(pos)
+		pos = vector.round(vector.add(center_pos, vector.multiply(step, i / dist)))
+		if not vector.equals(pos, last_pos) then
+			local vi = area:indexp(pos)
+			local node_id = data[vi]
+			linedata[line_index] = {
+				pos = pos,
+				vi = vi,
+				node_id = node_id
+			}
+			if boundary_index == nil and node_id == c_basalt then boundary_index = line_index end
+			if node_id == c_air then
+				if boundary_index ~= nil and last_filled_index == nil then last_filled_index = line_index end
+			else
+				if first_filled_index == nil then first_filled_index = line_index end
+			end
+			line_index = line_index + 1
+			last_pos = pos
+		end
+	end
+	last_filled_index  = last_filled_index or #linedata
+	first_filled_index = first_filled_index or 1
+
+	-- second pass: excavate
+	for i = math_max(1, first_filled_index - 4), math_min(#linedata, last_filled_index + 4) do
+		local vi = linedata[i].vi
 
 		for x = -5, 5 do
 			for y = -5, 5 do
@@ -517,8 +545,14 @@ function draw_pathway(data, area, nether_pos, center_pos)
 
 			end
 		end
+	end
+
+	-- thrid pass: decorate
+	for i = math_max(1, first_filled_index - 4), math_min(#linedata, last_filled_index + 4) do
+		local vi = linedata[i].vi
 		data[vi] = c_glowstone
 	end
+
 
 end
 
