@@ -429,6 +429,7 @@ local CRUST_LIMIT             = BASALT_LIMIT * 0.85
 -- Note it may find the most relevent sea-level - not necesssarily the one you are closest
 -- to, since the space above the sea reaches much higher than the depth below the sea.
 local function find_nearest_lava_sealevel(y)
+	-- todo: put oceans near the bottom of chunks to improve ability to generate tunnels to the center
 	-- todo: constrain y to be not near the bounds of the nether
 	-- todo: add some random adj at each level, seeded only by the level height
 	local sealevel = math.floor((y + 100) / 200) * 200
@@ -458,6 +459,7 @@ minetest.register_chatcommand("whereami",
 			local player = minetest.get_player_by_name(name)
 			local pos = vector.round(player:get_pos())
 			local densityNoise = caveperlin:get_3d(pos)
+			local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(pos.y)
 			local desc
 
 			if densityNoise > 0.6 then
@@ -466,13 +468,20 @@ minetest.register_chatcommand("whereami",
 				desc = "Negative nether"
 			elseif math_abs(densityNoise) < CENTER_REGION_LIMIT then
 				desc =  "Center region"
+
+				local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
+				if math_abs(densityNoise) + cavern_noise_adj < BASALT_LIMIT then
+					desc =  desc .. " inside cavern"
+				else
+					desc =  desc .. " but outside cavern"
+				end
+
 			elseif densityNoise > 0 then
 				desc =  "Shell between positive nether and center region"
 			else
 				desc = "Shell between negative nether and center region"
 			end
 
-			local sea_level, cavern_limits_fraction = find_nearest_lava_sealevel(pos.y)
 			local sea_pos = pos.y - sea_level
 			if sea_pos > 0 then
 				desc = desc .. ", " .. sea_pos .. "m above lava-sea level"
@@ -485,8 +494,91 @@ minetest.register_chatcommand("whereami",
 	}
 )
 
+function draw_pathway(data, area, nether_pos, center_pos)
+
+	local dist = math_floor(vector.distance(nether_pos, center_pos))
+
+	local step = vector.subtract(nether_pos, center_pos)
+	local ystride = area.ystride
+	local zstride = area.zstride
+
+	for i = 0, dist do
+		local pos = vector.round(vector.add(center_pos, vector.multiply(step, i / dist)))
+		local vi = area:indexp(pos)
+
+		for x = -5, 5 do
+			for y = -5, 5 do
+				if x * x + y * y < 25.3 then
+					data[vi + y * ystride + x] = c_air
+					data[vi + y * ystride + x * zstride] = c_air
+					data[vi + y * zstride + x] = c_air
+				end
+
+			end
+		end
+		data[vi] = c_glowstone
+	end
+
+end
+
+function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp)
+
+	local extent = vector.subtract(maxp, minp)
+	local skip = 10 -- sampling rate
+
+	minetest.chat_send_all(minetest.pos_to_string(extent, 1))
+
+	local highest   = -1000
+	local lowest    = 1000
+	local lowest_vi
+	local highest_vi
+
+	local yCaveStride = maxp.x - minp.x + 1
+	local zCaveStride = yCaveStride * yCaveStride
+
+	local vi_offset = area:indexp(minp)
+	local vi, ni
+
+	for y = 0, extent.y - 1, skip do
+		local sealevel = find_nearest_lava_sealevel(minp.y + y)
+
+		if minp.y + y > sealevel then -- only create tunnels above sea level
+			for z = 0, extent.z - 1, skip do
+
+				vi = vi_offset + y * area.ystride + z * area.zstride + 1
+				ni = z * zCaveStride + y * yCaveStride + 1
+				for x = 0, extent.x - 1, skip do
+
+					local noise = math_abs(nvals_cave[ni])
+					if noise < lowest then
+						lowest = noise
+						lowest_vi = vi
+					end
+					if noise > highest then
+						highest = noise
+						highest_vi = vi
+					end
+					ni = ni + skip
+					vi = vi + skip
+				end
+			end
+		end
+	end
+
+	if lowest < BASALT_LIMIT * 0.5 and highest > TCAVE + 0.03 then
+
+		local sealevel, cavern_limit_distance = find_nearest_lava_sealevel(area:position(lowest_vi).y)
+		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
+		if lowest + cavern_noise_adj < BASALT_LIMIT then
+			draw_pathway(data, area, area:position(highest_vi), area:position(lowest_vi))
+		end
+	end
+end
+
+
 
 local pathway_chunk_count = 0
+local pathway_distance_sum = 0
 local total_chunk_count = 0
 
 -- On-generated function
@@ -513,14 +605,15 @@ local function on_generated(minp, maxp, seed)
 
 
 	local dungeonRooms = build_dungeon_room_list(data, area)
-	local abs_cave_noise
-	local shelldepth, shell_thickness_adj
-	local abs_cave_noise_adjusted
+	local abs_cave_noise, abs_cave_noise_adjusted
 
 	local contains_nether = false
 	local contains_shell  = false
 	local contains_center = false
 	local contains_ocean = false
+
+	local nether_vi = nil
+	local center_vi = nil
 
 
 	for y = y0, y1 do -- Y loop first to minimise tcave & lava-sea calculations
@@ -533,14 +626,13 @@ local function on_generated(minp, maxp, seed)
 		local above_lavasea = y > sea_level
 		local below_lavasea = y < sea_level
 		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
-		--[[
-		local lavasea_noise_adj
-		if distance_above_lavasea > 0 then
-			lavasea_noise_adj = math_abs(distance_above_lavasea) / 200 -- range 0 to 0.5
-		else
-			lavasea_noise_adj = math_abs(distance_above_lavasea) / 40  -- range 0 to 2.5
-		end]]
 
+		if y == sea_level then
+			-- don't link to nether below the sea
+			nether_vi = nil
+			center_vi = nil
+			contains_nether = false
+		end
 
 		for z = z0, z1 do
 			local vi = area:index(x0, y, z) -- Initial voxelmanip index
@@ -556,6 +648,7 @@ local function on_generated(minp, maxp, seed)
 					-- prime region
 					data[vi] = c_air
 					contains_nether = true
+					nether_vi = vi
 
 				elseif -cave_noise > tcave then
 					-- secondary/spare region
@@ -564,16 +657,15 @@ local function on_generated(minp, maxp, seed)
 				elseif id == c_air or id == c_native_mapgen then
 
 					abs_cave_noise = math_abs(cave_noise)
-					abs_cave_noise_adjusted = abs_cave_noise + cavern_noise_adj
-					--shelldepth = (tcave - abs_cave_noise)
-					--density_adj = cavern_limit_distance * 0.2 --
 
-					--[[if abs_cave_noise < 0.1 then
-						-- basalt realms still contain netherrack
-						data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
-					else]]if above_lavasea and abs_cave_noise_adjusted < BASALT_LIMIT then
+					-- abs_cave_noise_adjusted makes the center region smaller as distance from the lava ocean
+					-- increases, we do this by pretending the abs_cave_noise value is higher.
+					abs_cave_noise_adjusted = abs_cave_noise + cavern_noise_adj
+
+					if above_lavasea and abs_cave_noise_adjusted < BASALT_LIMIT then
 						data[vi] = c_air
 						contains_center = true
+						center_vi = vi
 					elseif abs_cave_noise_adjusted < SURFACE_CRUST_LIMIT or (below_lavasea and abs_cave_noise_adjusted < CRUST_LIMIT) then
 						data[vi] = c_lava_source
 						contains_ocean = true
@@ -585,17 +677,8 @@ local function on_generated(minp, maxp, seed)
 					else
 						-- the shell seperating the basalt realm from the rest of the nether...
 						-- put some holes in it
+						data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
 						contains_shell = true
---[[
-						local noise_with_hole = abs_cave_noise + (1 - (math_abs(5 - distance_above_lavasea) / 5)) * .5
-						if noise_with_hole > tcave then
-							-- passageway to the bassalt realm
-							data[vi] = c_debug
-						elseif shelldepth > .14 then
-							data[vi] = c_basalt
-						else]]
-							data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
-						--end
 					end
 				end
 
@@ -608,11 +691,15 @@ local function on_generated(minp, maxp, seed)
 	total_chunk_count = total_chunk_count + 1
 	if contains_nether and contains_shell and contains_center and contains_ocean then
 		pathway_chunk_count = pathway_chunk_count + 1
+		pathway_distance_sum = pathway_distance_sum + vector.distance(area:position(nether_vi), area:position(center_vi))
+
+		--draw_pathway(data, area, area:position(nether_vi), area:position(center_vi))
 	end
 	if total_chunk_count % 50 == 0 then
-		minetest.chat_send_all(pathway_chunk_count .. " of " .. total_chunk_count .. " chunks contain both nether and lava-sea (" .. math_floor(pathway_chunk_count * 100 / total_chunk_count) .. "%)")
+		minetest.chat_send_all(pathway_chunk_count .. " of " .. total_chunk_count .. " chunks contain both nether and lava-sea (" .. math_floor(pathway_chunk_count * 100 / total_chunk_count) .. "%), average distance " .. (math_floor(pathway_distance_sum * 10 / total_chunk_count) / 10))
 	end
 
+	excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp)
 
 	-- any air from the native mapgen has been replaced by netherrack, but we
 	-- don't want netherrack inside dungeons, so fill known dungeon rooms with air.
