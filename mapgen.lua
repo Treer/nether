@@ -554,7 +554,7 @@ function draw_pathway(data, area, nether_pos, center_pos)
 	end
 
 	-- thrid pass: decorate
-	for i = start_index, stop_index do data[linedata[i].vi] = c_glowstone end
+	--for i = start_index, stop_index do data[linedata[i].vi] = c_glowstone end
 
 	-- add glowstone to make tunnels easyier to find
 	local vi = linedata[boundary_index].vi
