@@ -332,6 +332,8 @@ end
 -- (Corridors and the parts of rooms which extend beyond the emerge boundary will remain filled)
 function excavate_dungeons(data, area, rooms)
 
+	local vi, node_id
+
 	-- any air from the native mapgen has been replaced by netherrack, but
 	-- we don't want this inside dungeons, so fill dungeon rooms with air
 	for _, roomInfo in ipairs(rooms) do
@@ -341,9 +343,10 @@ function excavate_dungeons(data, area, rooms)
 
 		for z = room_min.z, room_max.z do
 			for y = room_min.y, room_max.y do
-				local vi = area:index(room_min.x, y, z)
+				vi = area:index(room_min.x, y, z)
 				for x = room_min.x, room_max.x do
-					if data[vi] == c_netherrack then data[vi] = c_air end
+					node_id = data[vi]
+					if node_id == c_netherrack or node_id == c_basalt then data[vi] = c_air end
 					vi = vi + 1
 				end
 			end
