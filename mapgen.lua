@@ -466,6 +466,10 @@ minetest.register_chatcommand("whereami",
 			local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(pos.y)
 			local desc
 
+			if pos.y > NETHER_CEILING or pos.y < NETHER_FLOOR then
+				return true, "The Overworld"
+			end
+
 			if densityNoise > 0.6 then
 				desc = "Positive nether"
 			elseif densityNoise < -0.6 then
