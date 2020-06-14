@@ -499,7 +499,7 @@ function draw_pathway(data, area, nether_pos, center_pos)
 
 	local dist = math_floor(vector.distance(nether_pos, center_pos))
 
-	local step = vector.subtract(nether_pos, center_pos)
+	local step = vector.subtract(center_pos, nether_pos)
 	local ystride = area.ystride
 	local zstride = area.zstride
 
@@ -509,7 +509,7 @@ function draw_pathway(data, area, nether_pos, center_pos)
 	local line_index = 1
 	local first_filled_index, boundary_index, last_filled_index
 	for i = 0, dist do
-		pos = vector.round(vector.add(center_pos, vector.multiply(step, i / dist)))
+		pos = vector.round(vector.add(nether_pos, vector.multiply(step, i / dist))) -- bresenham's line would be good here, but too much lua code
 		if not vector.equals(pos, last_pos) then
 			local vi = area:indexp(pos)
 			local node_id = data[vi]
@@ -528,30 +528,48 @@ function draw_pathway(data, area, nether_pos, center_pos)
 			last_pos = pos
 		end
 	end
-	last_filled_index  = last_filled_index or #linedata
 	first_filled_index = first_filled_index or 1
+	last_filled_index  = last_filled_index  or #linedata
+	boundary_index     = boundary_index     or last_filled_index
+
+	minetest.chat_send_all((last_filled_index - first_filled_index) .. " instead of " .. dist .. ", with steps reduced to " ..  #linedata)
 
 	-- second pass: excavate
-	for i = math_max(1, first_filled_index - 4), math_min(#linedata, last_filled_index + 4) do
+	local start_index, stop_index = math_max(1, first_filled_index - 4), math_min(#linedata, last_filled_index + 4)
+	for i = start_index, stop_index do
 		local vi = linedata[i].vi
-
+		local radius_squared = 26 - 2 * (i / (stop_index - start_index + 1))
 		for x = -5, 5 do
 			for y = -5, 5 do
-				if x * x + y * y < 25.3 then
-					data[vi + y * ystride + x] = c_air
+				if x * x + y * y < radius_squared then
+					data[vi + y * ystride + x]           = c_air
 					data[vi + y * ystride + x * zstride] = c_air
-					data[vi + y * zstride + x] = c_air
+					data[vi + y * zstride + x]           = c_air
 				end
-
 			end
 		end
 	end
 
 	-- thrid pass: decorate
-	for i = math_max(1, first_filled_index - 4), math_min(#linedata, last_filled_index + 4) do
+	for i = start_index, stop_index do
 		local vi = linedata[i].vi
-		data[vi] = c_glowstone
+		--data[vi] = c_glowstone
 	end
+
+	local vi = linedata[boundary_index].vi
+	local glowcount = 0
+	for x = -6, 6 do
+		for y = -6, 6 do
+			if glowcount > 3 then break end
+			local radius_squared = x * x + y * y
+			if radius_squared < 27 and radius_squared >= 25 then
+				if data[vi + y * ystride + x]           ~= c_air then data[vi + y * ystride + x]           = c_glowstone glowcount = glowcount + 1 end
+				if data[vi + y * ystride + x * zstride] ~= c_air then data[vi + y * ystride + x * zstride] = c_glowstone glowcount = glowcount + 1 end
+				if data[vi + y * zstride + x]           ~= c_air then data[vi + y * zstride + x]           = c_glowstone glowcount = glowcount + 1 end
+			end
+		end
+	end
+
 
 
 end
