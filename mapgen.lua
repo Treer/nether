@@ -160,7 +160,7 @@ minetest.register_ore({
 	ore_type       = "scatter",
 	ore            = "nether:lava_crust",
 	wherein        = "nether:basalt",
-	clust_scarcity = 20 * 20 * 20,
+	clust_scarcity = 16 * 16 * 16,
 	clust_num_ores = 3,
 	clust_size     = 2,
 	y_max = NETHER_CEILING,
@@ -468,7 +468,7 @@ minetest.register_chatcommand("whereami",
 			elseif densityNoise < -0.6 then
 				desc = "Negative nether"
 			elseif math_abs(densityNoise) < CENTER_REGION_LIMIT then
-				desc =  "Center region"
+				desc =  "Nether Core"
 
 				local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
 				if math_abs(densityNoise) + cavern_noise_adj < BASALT_LIMIT then
@@ -490,12 +490,13 @@ minetest.register_chatcommand("whereami",
 				desc = desc .. ", " .. sea_pos .. "m below lava-sea level"
 			end
 
-			return true, (math_floor(densityNoise * 1000) / 1000) .. " - " .. desc
+			return true, "[Perlin " .. (math_floor(densityNoise * 1000) / 1000) .. "] " .. desc
 		end
 	}
 )
 
 function draw_pathway(data, area, nether_pos, center_pos)
+
 
 	local dist = math_floor(vector.distance(nether_pos, center_pos))
 
@@ -532,13 +533,15 @@ function draw_pathway(data, area, nether_pos, center_pos)
 	last_filled_index  = last_filled_index  or #linedata
 	boundary_index     = boundary_index     or last_filled_index
 
-	minetest.chat_send_all((last_filled_index - first_filled_index) .. " instead of " .. dist .. ", with steps reduced to " ..  #linedata)
+	--minetest.chat_send_all((last_filled_index - first_filled_index) .. " instead of " .. dist .. ", with steps reduced to " ..  #linedata)
 
 	-- second pass: excavate
+	-- excavation radius should be limited to half the sampling distance so we don't end up
+	-- exceeding minp-maxp and having excavation filled in when the next chunk is generated.
 	local start_index, stop_index = math_max(1, first_filled_index - 4), math_min(#linedata, last_filled_index + 4)
 	for i = start_index, stop_index do
 		local vi = linedata[i].vi
-		local radius_squared = 26 - 2 * (i / (stop_index - start_index + 1))
+		local radius_squared = 26.5 - 3 * (i / (stop_index - start_index + 1))
 		for x = -5, 5 do
 			for y = -5, 5 do
 				if x * x + y * y < radius_squared then
@@ -551,11 +554,9 @@ function draw_pathway(data, area, nether_pos, center_pos)
 	end
 
 	-- thrid pass: decorate
-	for i = start_index, stop_index do
-		local vi = linedata[i].vi
-		--data[vi] = c_glowstone
-	end
+	for i = start_index, stop_index do data[linedata[i].vi] = c_glowstone end
 
+	-- add glowstone to make tunnels easyier to find
 	local vi = linedata[boundary_index].vi
 	local glowcount = 0
 	for x = -6, 6 do
@@ -577,19 +578,17 @@ end
 function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp)
 
 	local extent = vector.subtract(maxp, minp)
-	local skip = 10 -- sampling rate
+	local skip = 10 -- sampling rate of 1 in 10
 
-	minetest.chat_send_all(minetest.pos_to_string(extent, 1))
-
-	local highest   = -1000
-	local lowest    = 1000
+	local highest = -1000
+	local lowest  =  1000
 	local lowest_vi
 	local highest_vi
 
 	local yCaveStride = maxp.x - minp.x + 1
 	local zCaveStride = yCaveStride * yCaveStride
 
-	local vi_offset = area:indexp(minp)
+	local vi_offset = area:indexp(vector.add(minp, math_floor(skip / 2))) -- start half the sampling distance away from minp
 	local vi, ni
 
 	for y = 0, extent.y - 1, skip do
@@ -618,7 +617,7 @@ function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, m
 		end
 	end
 
-	if lowest < BASALT_LIMIT * 0.5 and highest > TCAVE + 0.03 then
+	if lowest < BASALT_LIMIT and highest > TCAVE + 0.03 then
 
 		local sealevel, cavern_limit_distance = find_nearest_lava_sealevel(area:position(lowest_vi).y)
 		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)

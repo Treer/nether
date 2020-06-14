@@ -240,6 +240,29 @@ local schematic_BasaltStalactite = {
     }
 }
 
+
+
+-- a stalagmite is an upsidedown stalactite
+local schematic_BasaltStalagmite = {
+    size = schematic_BasaltStalactite.size,
+    data = {},
+    yslice_prob = {}
+}
+local array_length = #schematic_BasaltStalactite.data + 1
+for i, node in ipairs(schematic_BasaltStalactite.data) do
+    schematic_BasaltStalagmite.data[array_length - i] = node
+end
+array_length = #schematic_BasaltStalactite.yslice_prob + 1
+y_size = schematic_BasaltStalactite.size.y
+for i, node in ipairs(schematic_BasaltStalactite.yslice_prob) do
+    schematic_BasaltStalagmite.yslice_prob[i] = {
+        -- we can safely lower the prob. to gain more variance because floor based schematics
+        -- don't have the bug where missing lines moves them away from the surface
+        prob = schematic_BasaltStalactite.yslice_prob[i].prob - 20,
+        ypos = y_size - 1 - schematic_BasaltStalactite.yslice_prob[i].ypos
+    }
+end
+
 minetest.register_decoration({
     name = "Basalt glowstone stalactite",
     deco_type = "schematic",
@@ -270,6 +293,8 @@ minetest.register_decoration({
     place_offset_y=-3
 })
 
+--[[
+
 minetest.register_decoration({
     name = "Basalt stalactite",
     deco_type = "schematic",
@@ -282,6 +307,21 @@ minetest.register_decoration({
     schematic = schematic_BasaltStalactite,
     flags = "place_center_x,place_center_z,force_placement,all_ceilings",
     place_offset_y=-6
+})]]
+
+
+minetest.register_decoration({
+    name = "Basalt stalagmite",
+    deco_type = "schematic",
+    place_on = "nether:basalt",
+    sidelen = 80,
+    fill_ratio = 0.001,
+    biomes = {"nether_caverns"},
+    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
+    y_min = nether.DEPTH_FLOOR,
+    schematic = schematic_BasaltStalagmite,
+    flags = "place_center_x,place_center_z,force_placement,all_floors",
+    --place_offset_y=-6
 })
 
 
