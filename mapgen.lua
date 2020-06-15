@@ -458,17 +458,18 @@ minetest.register_chatcommand("whereami",
         description = "Describes which region of the nether the player is in",
 		func = function(name, param)
 
-			caveperlin = caveperlin or minetest.get_perlin(np_cave)
-
 			local player = minetest.get_player_by_name(name)
-			local pos = vector.round(player:get_pos())
-			local densityNoise = caveperlin:get_3d(pos)
-			local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(pos.y)
-			local desc
+			if player == nil then return false, "Unknown player position" end
 
+			local pos = vector.round(player:get_pos())
 			if pos.y > NETHER_CEILING or pos.y < NETHER_FLOOR then
 				return true, "The Overworld"
 			end
+
+			caveperlin = caveperlin or minetest.get_perlin(np_cave)
+			local densityNoise = caveperlin:get_3d(pos)
+			local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(pos.y)
+			local desc
 
 			if densityNoise > 0.6 then
 				desc = "Positive nether"

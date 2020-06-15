@@ -1,6 +1,5 @@
 default
 stairs
-bucket?
 doc_basics?
 dungeon_loot?
 fire?

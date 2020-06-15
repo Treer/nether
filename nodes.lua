@@ -138,59 +138,68 @@ minetest.register_node("nether:basalt", {
 	sounds = default.node_sound_stone_defaults(),
 })
 
+
+-- creates a splash and leaves lava in place of the "nether:lava_crust"
+local function smash_lava_crust(pos)
+
+	local lava_particlespawn_def = {
+		amount = 6,
+		time = 0.1,
+		minpos = {x=pos.x - 0.5, y=pos.y + 0.3, z=pos.z - 0.5},
+		maxpos = {x=pos.x + 0.5, y=pos.y + 0.5, z=pos.z + 0.5},
+		minvel = {x = -1.5, y = 1.5, z = -1.5},
+		maxvel = {x =  1.5, y = 5,   z =  1.5},
+		minacc = {x = 0, y = -10, z = 0},
+		maxacc = {x = 0, y = -10, z = 0},
+		minexptime = 1,
+		maxexptime = 1,
+		minsize = .2,
+		maxsize = .8,
+		texture = "^[colorize:#A00:255",
+		glow = 8
+	}
+	minetest.add_particlespawner(lava_particlespawn_def)
+	lava_particlespawn_def.texture = "^[colorize:#FB0:255"
+	lava_particlespawn_def.maxvel.y = 3
+	lava_particlespawn_def.glow = 12
+	minetest.add_particlespawner(lava_particlespawn_def)
+
+	minetest.set_node(pos, {name = "default:lava_source"})
+end
+
 minetest.register_node("nether:lava_crust", {
-    description = "Lava crust",
-    tiles = {
-        {
-            name="nether_lava_crust_animated.png",
-            backface_culling=true,
-            tileable_vertical=true,
-            tileable_horizontal=true,
-            align_style="world",
-            scale=2,
-            animation = {
-                type = "vertical_frames",
-                aspect_w = 32,
-                aspect_h = 32,
-                length = 2,
-            },
-        }
-    },
+	description = "Lava crust",
+	tiles = {
+		{
+			name="nether_lava_crust_animated.png",
+			backface_culling=true,
+			tileable_vertical=true,
+			tileable_horizontal=true,
+			align_style="world",
+			scale=2,
+			animation = {
+				type = "vertical_frames",
+				aspect_w = 32,
+				aspect_h = 32,
+				length = 2,
+			},
+		}
+	},
 
-    after_destruct = function(pos)
+	after_destruct = smash_lava_crust,
+	on_blast = function(pos, intensity)
+		smash_lava_crust(pos)
+	end,
 
-        local lava_particlespawn_def = {
-            amount = 6,
-            time = 0.1,
-            minpos = {x=pos.x - 0.5, y=pos.y + 0.3, z=pos.z - 0.5},
-            maxpos = {x=pos.x + 0.5, y=pos.y + 0.5, z=pos.z + 0.5},
-            minvel = {x = -1.5, y = 1.5, z = -1.5},
-            maxvel = {x =  1.5, y = 5,   z =  1.5},
-            minacc = {x = 0, y = -10, z = 0},
-            maxacc = {x = 0, y = -10, z = 0},
-            minexptime = 1,
-            maxexptime = 1,
-            minsize = .2,
-            maxsize = .8,
-            texture = "^[colorize:#A00:255",
-            glow = 8
-        }
-        minetest.add_particlespawner(lava_particlespawn_def)
-        lava_particlespawn_def.texture = "^[colorize:#FB0:255"
-        lava_particlespawn_def.maxvel.y = 3
-        lava_particlespawn_def.glow = 12
-        minetest.add_particlespawner(lava_particlespawn_def)
-
-        minetest.set_node(pos, {name = "default:lava_source"})
-    end,
-    paramtype = "light",
-    light_source = default.LIGHT_MAX - 3,
-    buildable_to = true,
-    is_ground_content = true,
-    drop = "",
-    liquid_viscosity = 7,
-    damage_per_second = 4 * 2,
-    groups = {oddly_breakable_by_hand = 3, igniter = 1},
+	paramtype = "light",
+	light_source = default.LIGHT_MAX - 3,
+	buildable_to = false,
+	walkable_to = true,
+	is_ground_content = true,
+	drop = "",
+	liquid_viscosity = 7,
+	damage_per_second = 4 * 2,
+	groups = {oddly_breakable_by_hand = 3, igniter = 1},
 })
 
 
@@ -263,42 +272,69 @@ for key, value in pairs(lava_source) do lavasea_source[key] = value end
 lavasea_source.name = nil
 lavasea_source.tiles = {
 	{
-		name = "nether_lava_source_animated.png",
+		name             = "nether_lava_source_animated.png",
 		backface_culling = false,
-		align_style="world",
-		scale=2,
+		align_style      = "world",
+		scale            = 2,
 		animation = {
-			type = "vertical_frames",
+			type     = "vertical_frames",
 			aspect_w = 32,
 			aspect_h = 32,
-			length = 3.0,
+			length   = 3.0,
 		},
 	},
 	{
-		name = "nether_lava_source_animated.png",
+		name             = "nether_lava_source_animated.png",
 		backface_culling = true,
-		align_style="world",
-		scale=2,
+		align_style      = "world",
+		scale            = 2,
 		animation = {
-			type = "vertical_frames",
+			type     = "vertical_frames",
 			aspect_w = 32,
 			aspect_h = 32,
-			length = 3.0,
+			length   = 3.0,
 		},
 	},
 }
 minetest.register_node("nether:lava_source", lavasea_source)
 
-if minetest.get_modpath("bucket") then
-	-- register bucket of Lava-sea source - but make it just the same bucket as default lava
+minetest.register_on_mods_loaded(function()
 
-	local lavasea_bucket = {}
-	local lava_bucket = bucket.liquids["default:lava_source"]
-	for key, value in pairs(lava_bucket) do lavasea_bucket[key] = value end
+	-- register a bucket of Lava-sea source - but make it just the same bucket as default lava.
+	-- (by doing this in register_on_mods_loaded we don't need to declare a soft dependency)
+	if minetest.get_modpath("bucket") and minetest.global_exists("bucket") then
+		local lava_bucket = bucket.liquids["default:lava_source"]
+		if lava_bucket ~= nil then
+			local lavasea_bucket = {}
+			for key, value in pairs(lava_bucket) do lavasea_bucket[key] = value end
+			lavasea_bucket.source = "nether:lava_source"
+			bucket.liquids[lavasea_bucket.source] = lavasea_bucket
+		end
+	end
 
-	lavasea_bucket.source = "nether:lava_source"
-	bucket.liquids[lavasea_bucket.source] = lavasea_bucket
-end
+	-- include "nether:lava_source" in any "default:lava_source" ABMs
+	local function include_nether_lava(set_of_nodes)
+		if (type(set_of_nodes) == "table") then
+			for _, nodename in pairs(set_of_nodes) do
+				if nodename == "default:lava_source" then
+					-- I'm amazed this works, but it does
+					table.insert(set_of_nodes, "nether:lava_source")
+					break;
+				end
+			end
+		end
+	end
+
+	for _, abm in pairs(minetest.registered_abms) do
+		include_nether_lava(abm.nodenames)
+		include_nether_lava(abm.neighbors)
+	end
+	for _, lbm in pairs(minetest.registered_lbms) do
+		include_nether_lava(lbm.nodenames)
+	end
+	--minetest.log("minetest.registered_abms" .. dump(minetest.registered_abms))
+	--minetest.log("minetest.registered_lbms" .. dump(minetest.registered_lbms))
+end)
 
 
 -- Fumaroles (Chimney's)
