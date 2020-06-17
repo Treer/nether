@@ -158,6 +158,17 @@ minetest.register_ore({
 
 minetest.register_ore({
 	ore_type       = "scatter",
+	ore            = "default:lava_source",
+	wherein        = {"nether:basalt"},
+	clust_scarcity = 35 * 35 * 35,
+	clust_num_ores = 4,
+	clust_size     = 2,
+	y_max = NETHER_CEILING,
+	y_min = NETHER_FLOOR,
+})
+
+minetest.register_ore({
+	ore_type       = "scatter",
 	ore            = "nether:lava_crust",
 	wherein        = "nether:basalt",
 	clust_scarcity = 16 * 16 * 16,
@@ -170,7 +181,7 @@ minetest.register_ore({
 minetest.register_ore({
 	ore_type       = "scatter",
 	ore            = "default:lava_source",
-	wherein        = {"nether:rack", "nether:basalt"},
+	wherein        = "nether:rack",
 	clust_scarcity = 36 * 36 * 36,
 	clust_num_ores = 4,
 	clust_size     = 2,
