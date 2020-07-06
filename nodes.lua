@@ -219,7 +219,7 @@ minetest.register_node("nether:basalt", {
 
 -- Potentially a portalstone, but will also be a stepping stone between basalt
 -- and chiseled basalt.
--- It can only be introduced by the biomes-based mapgen, since it requires the 
+-- It can only be introduced by the biomes-based mapgen, since it requires the
 -- MT 5.0 world-align texture features.
 minetest.register_node("nether:basalt_hewn", {
 	description = S("Hewn Basalt"),
@@ -393,6 +393,25 @@ minetest.register_node("nether:lava_crust", {
 		"nether_lava_crust_animated.png^[sheet:2x8:0,1",
 		"nether_lava_crust_animated.png^[sheet:2x8:1,1"
 	),
+	collision_box = {
+		type = "fixed",
+		fixed = {
+			-- Damage is calculated "starting 0.1 above feet
+			-- and progressing upwards in 1 node intervals", so
+			-- lower this nodes collision box by more than 0.1
+			-- to ensure damage will be taken when standing on
+			-- this node.
+			{-0.5, -0.5, -0.5, 0.5, 0.39, 0.5}
+		},
+	},
+	selection_box = {
+		type = "fixed",
+		fixed = {
+			-- Keep the selection box matching the visual node,
+			-- rather than the collision_box.
+			{-0.5, -0.5, -0.5, 0.5, 0.5, 0.5}
+		},
+	},
 
 	after_destruct = function(pos)
 		smash_lava_crust(pos, true)
@@ -408,7 +427,7 @@ minetest.register_node("nether:lava_crust", {
 	is_ground_content = true,
 	drop = "",
 	liquid_viscosity = 7,
-	damage_per_second = 4 * 2,
+	damage_per_second = 2,
 	groups = {oddly_breakable_by_hand = 3, igniter = 1}, -- explody?
 })
 
