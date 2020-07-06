@@ -159,7 +159,7 @@ minetest.register_ore({
 minetest.register_ore({
 	ore_type       = "scatter",
 	ore            = "default:lava_source",
-	wherein        = {"nether:basalt"},
+	wherein        = "nether:rack_deep",
 	clust_scarcity = 35 * 35 * 35,
 	clust_num_ores = 4,
 	clust_size     = 2,
@@ -170,7 +170,7 @@ minetest.register_ore({
 minetest.register_ore({
 	ore_type       = "scatter",
 	ore            = "nether:lava_crust",
-	wherein        = "nether:basalt",
+	wherein        = "nether:rack_deep",
 	clust_scarcity = 16 * 16 * 16,
 	clust_num_ores = 3,
 	clust_size     = 2,
@@ -228,6 +228,7 @@ local yblmax = NETHER_CEILING - BLEND * 2
 
 local c_air              = minetest.get_content_id("air")
 local c_netherrack       = minetest.get_content_id("nether:rack")
+local c_netherrack_deep  = minetest.get_content_id("nether:rack_deep")
 local c_dungeonbrick     = minetest.get_content_id("nether:brick")
 local c_dungeonbrick_alt = minetest.get_content_id("nether:brick_cracked")
 local c_netherbrick_slab = minetest.get_content_id("stairs:slab_nether_brick")
@@ -357,7 +358,7 @@ function excavate_dungeons(data, area, rooms)
 				vi = area:index(room_min.x, y, z)
 				for x = room_min.x, room_max.x do
 					node_id = data[vi]
-					if node_id == c_netherrack or node_id == c_basalt then data[vi] = c_air end
+					if node_id == c_netherrack or node_id == c_netherrack_deep then data[vi] = c_air end
 					vi = vi + 1
 				end
 			end
@@ -529,7 +530,8 @@ function draw_pathway(data, area, nether_pos, center_pos)
 	local line_index = 1
 	local first_filled_index, boundary_index, last_filled_index
 	for i = 0, dist do
-		pos = vector.round(vector.add(nether_pos, vector.multiply(step, i / dist))) -- bresenham's line would be good here, but too much lua code
+		-- bresenham's line would be good here, but too much lua code
+		local pos = vector.round(vector.add(nether_pos, vector.multiply(step, i / dist)))
 		if not vector.equals(pos, last_pos) then
 			local vi = area:indexp(pos)
 			local node_id = data[vi]
@@ -538,11 +540,17 @@ function draw_pathway(data, area, nether_pos, center_pos)
 				vi = vi,
 				node_id = node_id
 			}
-			if boundary_index == nil and node_id == c_basalt then boundary_index = line_index end
+			if boundary_index == nil and node_id == c_netherrack_deep then
+				boundary_index = line_index
+			end
 			if node_id == c_air then
-				if boundary_index ~= nil and last_filled_index == nil then last_filled_index = line_index end
+				if boundary_index ~= nil and last_filled_index == nil then
+					last_filled_index = line_index
+				end
 			else
-				if first_filled_index == nil then first_filled_index = line_index end
+				if first_filled_index == nil then
+					first_filled_index = line_index
+				end
 			end
 			line_index = line_index + 1
 			last_pos = pos
@@ -734,7 +742,7 @@ local function on_generated(minp, maxp, seed)
 					elseif id == c_air or id == c_native_mapgen then
 
 						if abs_cave_noise < CENTER_REGION_LIMIT then
-							data[vi] = c_basalt
+							data[vi] = c_netherrack_deep
 						else
 							-- the shell seperating the basalt realm from the rest of the nether...
 							-- put some holes in it

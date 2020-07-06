@@ -75,6 +75,15 @@ minetest.register_node("nether:rack", {
 	sounds = default.node_sound_stone_defaults(),
 })
 
+-- Deep Netherrack, found in the central magma layers
+minetest.register_node("nether:rack_deep", {
+	description = S("Deep Netherrack"),
+	tiles = {"nether_rack_deep.png"},
+	is_ground_content = true,
+	groups = {cracky = 3, level = 2},
+	sounds = default.node_sound_stone_defaults(),
+})
+
 minetest.register_node("nether:sand", {
 	description = S("Nethersand"),
 	tiles = {"nether_sand.png"},
@@ -88,6 +97,16 @@ minetest.register_node("nether:sand", {
 minetest.register_node("nether:glowstone", {
 	description = S("Glowstone"),
 	tiles = {"nether_glowstone.png"},
+	is_ground_content = true,
+	light_source = 14,
+	paramtype = "light",
+	groups = {cracky = 3, oddly_breakable_by_hand = 3},
+	sounds = default.node_sound_glass_defaults(),
+})
+
+minetest.register_node("nether:glowstone_deep", {
+	description = S("Deep Glowstone"),
+	tiles = {"nether_glowstone_deep.png"},
 	is_ground_content = true,
 	light_source = 14,
 	paramtype = "light",
@@ -194,9 +213,31 @@ minetest.register_node("nether:basalt", {
 		"nether_basalt_side.png"
 	},
 	is_ground_content = true,
-	groups = {cracky = 0.1, level = 3}, -- set proper digging times and uses, and maybe explosion immune if api handles that
+	groups = {cracky = 1, level = 3}, -- set proper digging times and uses, and maybe explosion immune if api handles that
 	sounds = default.node_sound_stone_defaults(),
 })
+
+-- Potentially a portalstone, but will also be a stepping stone between basalt
+-- and chiseled basalt.
+-- It can only be introduced by the biomes-based mapgen, since it requires the 
+-- MT 5.0 world-align texture features.
+minetest.register_node("nether:basalt_hewn", {
+	description = S("Hewn Basalt"),
+	tiles = {{
+		name        = "nether_basalt_hewn.png",
+		align_style = "world",
+		scale       = 2
+	}},
+	inventory_image = minetest.inventorycube(
+		"nether_basalt_hewn.png^[sheet:2x2:0,0",
+		"nether_basalt_hewn.png^[sheet:2x2:0,1",
+		"nether_basalt_hewn.png^[sheet:2x2:1,1"
+	),
+	is_ground_content = true,
+	groups = {cracky = 1, level = 2},
+	sounds = default.node_sound_stone_defaults(),
+})
+
 
 -- Lava-sea source
 -- This is a lava source using a different animated texture so that each node
@@ -233,8 +274,27 @@ lavasea_source.tiles = {
 			length   = 3.0,
 		},
 	},
+	liquid_alternative_source = "nether:lava_source",
 }
+lavasea_source.inventory_image = minetest.inventorycube(
+	"nether_lava_source_animated.png^[sheet:2x16:0,0",
+	"nether_lava_source_animated.png^[sheet:2x16:0,1",
+	"nether_lava_source_animated.png^[sheet:2x16:1,1"
+)
 minetest.register_node("nether:lava_source", lavasea_source)
+
+
+local original_cool_lava_action
+nether.cool_lava = function(pos, node)
+	if node.name == "nether:lava_source" or node.name == "nether:lava_crust" then
+		minetest.set_node(pos, {name = "nether:basalt"})
+		minetest.sound_play("default_cool_lava",
+			{pos = pos, max_hear_distance = 16, gain = 0.25}, true)
+	else -- chain the original ABM action to handle conventional lava
+		original_cool_lava_action(pos, node)
+	end
+end
+
 
 minetest.register_on_mods_loaded(function()
 
@@ -266,6 +326,11 @@ minetest.register_on_mods_loaded(function()
 	for _, abm in pairs(minetest.registered_abms) do
 		include_nether_lava(abm.nodenames)
 		include_nether_lava(abm.neighbors)
+		if abm.label == "Lava cooling" and abm.action ~= nil then
+			original_cool_lava_action = abm.action
+			abm.action = nether.cool_lava
+			table.insert(abm.nodenames, "nether:lava_crust") -- lets have lava_crust cfool as well
+		end
 	end
 	for _, lbm in pairs(minetest.registered_lbms) do
 		include_nether_lava(lbm.nodenames)
@@ -323,6 +388,11 @@ minetest.register_node("nether:lava_crust", {
 			},
 		}
 	},
+	inventory_image = minetest.inventorycube(
+		"nether_lava_crust_animated.png^[sheet:2x8:0,0",
+		"nether_lava_crust_animated.png^[sheet:2x8:0,1",
+		"nether_lava_crust_animated.png^[sheet:2x8:1,1"
+	),
 
 	after_destruct = function(pos)
 		smash_lava_crust(pos, true)

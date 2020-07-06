@@ -264,31 +264,49 @@ for i, node in ipairs(schematic_BasaltStalactite.yslice_prob) do
 end
 
 minetest.register_decoration({
-    name = "Basalt glowstone stalactite",
+    name = "Deep glowstone stalactite",
     deco_type = "schematic",
-    place_on = "nether:basalt",
+    place_on = "nether:rack_deep",
     sidelen = 80,
     fill_ratio = 0.0003,
     biomes = {"nether_caverns"},
     y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
     y_min = nether.DEPTH_FLOOR,
     schematic = schematic_GlowstoneStalactite,
-    replacements = {["nether:rack"] = "nether:basalt"},
+    replacements = {["nether:rack"] = "nether:rack_deep", ["nether:glowstone"] = "nether:glowstone_deep"},
     flags = "place_center_x,place_center_z,force_placement,all_ceilings",
     place_offset_y=-3
 })
 
 minetest.register_decoration({
-    name = "Basalt fat stalactite",
+    name = "Deep glowstone stalactite outgrowth",
     deco_type = "schematic",
-    place_on = "nether:basalt",
+    place_on = "nether:glowstone_deep",
+    sidelen = 40,
+    fill_ratio = 0.15,
+    biomes = {"nether_caverns"},
+    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
+    y_min = nether.DEPTH_FLOOR,
+    schematic = {
+        size = {x = 1, y = 4, z = 1},
+        data = { G, G, G, G }
+    },
+    replacements = {["nether:glowstone"] = "nether:glowstone_deep"},
+    flags = "place_center_x,place_center_z,all_ceilings",
+})
+
+
+minetest.register_decoration({
+    name = "Deep Netherrack stalactite",
+    deco_type = "schematic",
+    place_on = "nether:rack_deep",
     sidelen = 80,
     fill_ratio = 0.0003,
     biomes = {"nether_caverns"},
     y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
     y_min = nether.DEPTH_FLOOR,
     schematic = schematic_GlowstoneStalactite,
-    replacements = {["nether:rack"] = "nether:basalt", ["nether:glowstone"] = "nether:basalt"},
+    replacements = {["nether:rack"] = "nether:rack_deep", ["nether:glowstone"] = "nether:rack_deep"},
     flags = "place_center_x,place_center_z,force_placement,all_ceilings",
     place_offset_y=-3
 })
@@ -313,7 +331,7 @@ minetest.register_decoration({
 minetest.register_decoration({
     name = "Basalt stalagmite",
     deco_type = "schematic",
-    place_on = "nether:basalt",
+    place_on = "nether:rack_deep",
     sidelen = 80,
     fill_ratio = 0.001,
     biomes = {"nether_caverns"},
