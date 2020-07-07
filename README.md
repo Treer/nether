@@ -39,6 +39,7 @@ SOFTWARE.
  * `nether_basalt`* (files starting with "nether_basalt"): Treer, 2020
  * `nether_book_`* (files starting with "nether_book"): Treer, 2019-2020
  * `nether_fumarole.ogg`: Treer, 2020
+ * `nether_lava_bubble`* (files starting with "nether_lava_bubble"): Treer, 2020
  * `nether_lava_crust_animated.png`: Treer, 2019-2020
  * `nether_particle_anim`* (files starting with "nether_particle_anim"): Treer, 2019
  * `nether_portal_ignition_failure.ogg`: Treer, 2019

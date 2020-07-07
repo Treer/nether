@@ -200,7 +200,7 @@ end
 -- Central nether nodes
 
 -- Basalt is intended as another portalstone - an alternative to obsidian that's available
--- for other mods to use. It cannot be found in the regions of the nether where portals
+-- for other mods to use. It cannot be found in the regions of the nether where Nether portals
 -- link to, so requires a journey to obtain.
 minetest.register_node("nether:basalt", {
 	description = S("Basalt"),
@@ -287,10 +287,21 @@ minetest.register_node("nether:lava_source", lavasea_source)
 local original_cool_lava_action
 nether.cool_lava = function(pos, node)
 	if node.name == "nether:lava_source" or node.name == "nether:lava_crust" then
-		minetest.set_node(pos, {name = "nether:basalt"})
+		-- use swap_node to avoid triggering the lava_crust's after_destruct
+		minetest.swap_node(pos, {name = "nether:basalt"})
+		-- evaporate water sitting on Nether lava
+		local pos_above = {x = pos.x, y = pos.y + 1, z = pos.z}
+		local node_above = minetest.get_node(pos_above)
+		if minetest.get_item_group(node_above.name, "water") > 0 then
+			-- cools_lava might be a better group to check for, but perhaps there's
+			-- something in that group that isn't a liquid and shouldn't be evaporated?
+			minetest.swap_node(pos_above, {name="air"})
+		end
+
 		minetest.sound_play("default_cool_lava",
 			{pos = pos, max_hear_distance = 16, gain = 0.25}, true)
-	else -- chain the original ABM action to handle conventional lava
+	else
+		-- chain the original ABM action to handle conventional lava
 		original_cool_lava_action(pos, node)
 	end
 end
@@ -327,9 +338,10 @@ minetest.register_on_mods_loaded(function()
 		include_nether_lava(abm.nodenames)
 		include_nether_lava(abm.neighbors)
 		if abm.label == "Lava cooling" and abm.action ~= nil then
+			-- lets have lava_crust cool as well
 			original_cool_lava_action = abm.action
 			abm.action = nether.cool_lava
-			table.insert(abm.nodenames, "nether:lava_crust") -- lets have lava_crust cfool as well
+			table.insert(abm.nodenames, "nether:lava_crust")
 		end
 	end
 	for _, lbm in pairs(minetest.registered_lbms) do
@@ -365,6 +377,15 @@ local function smash_lava_crust(pos, playsound)
 	minetest.add_particlespawner(lava_particlespawn_def)
 
 	minetest.set_node(pos, {name = "default:lava_source"})
+
+	if playsound then
+		minetest.sound_play(
+			"nether_lava_bubble",
+			-- this sample was encoded at 3x speed to reduce .ogg file size
+			-- at the expense of higher frequencies, so pitch it down ~3x
+			{pos = pos, pitch = 0.3, max_hear_distance = 8, gain = 0.4}
+		)
+	end
 end
 
 
@@ -398,9 +419,9 @@ minetest.register_node("nether:lava_crust", {
 		fixed = {
 			-- Damage is calculated "starting 0.1 above feet
 			-- and progressing upwards in 1 node intervals", so
-			-- lower this nodes collision box by more than 0.1
+			-- lower this node's collision box by more than 0.1
 			-- to ensure damage will be taken when standing on
-			-- this node.
+			-- the node.
 			{-0.5, -0.5, -0.5, 0.5, 0.39, 0.5}
 		},
 	},
@@ -413,8 +434,10 @@ minetest.register_node("nether:lava_crust", {
 		},
 	},
 
-	after_destruct = function(pos)
+	after_destruct = function(pos, oldnode)
 		smash_lava_crust(pos, true)
+	end,
+	after_dig_node = function(pos, oldnode, oldmetadata, digger)
 	end,
 	on_blast = function(pos, intensity)
 		smash_lava_crust(pos, false)
@@ -425,10 +448,17 @@ minetest.register_node("nether:lava_crust", {
 	buildable_to = false,
 	walkable_to = true,
 	is_ground_content = true,
-	drop = "",
-	liquid_viscosity = 7,
+	drop = {
+		items = {{
+			-- Allow SilkTouch-esque "pickaxes of preservation" to mine the lava crust intact, if PR #10141 gets merged.
+			tools = {"this line will block early MT versions which don't respect the tool_groups restrictions"},
+			tool_groups = {{"pickaxe", "preservation"}},
+			items = {"nether:lava_crust"}
+		}}
+	},
+	--liquid_viscosity = 7,
 	damage_per_second = 2,
-	groups = {oddly_breakable_by_hand = 3, igniter = 1}, -- explody?
+	groups = {oddly_breakable_by_hand = 3, cracky = 3, explody = 1, igniter = 1},
 })
 
 
