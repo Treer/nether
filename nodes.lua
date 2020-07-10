@@ -286,17 +286,37 @@ minetest.register_node("nether:lava_source", lavasea_source)
 
 local original_cool_lava_action
 nether.cool_lava = function(pos, node)
+
+	local pos_above = {x = pos.x, y = pos.y + 1, z = pos.z}
+	local node_above = minetest.get_node(pos_above)
+
+	-- evaporate water sitting above lava
+	if minetest.get_node_group(node_above.name, "water") > 0 then
+		-- cools_lava might be a better group to check for, but perhaps there's
+		-- something in that group that isn't a liquid and shouldn't be evaporated?
+		minetest.swap_node(pos_above, {name="air"})
+	end
+
+	-- add steam to cooling lava
+	minetest.add_particlespawner({
+		amount = 12,
+		time = 0.15,
+		minpos = {x=pos.x - 0.5, y=pos.y - 0,   z=pos.z - 0.5},
+		maxpos = {x=pos.x + 0.5, y=pos.y + 0.5, z=pos.z + 0.5},
+		minvel = {x = -0.5, y = 0.5, z = -0.5},
+		maxvel = {x =  0.5, y = 1.5, z =  0.5},
+		minacc = {x = 0, y = 0.1, z = 0},
+		maxacc = {x = 0, y = 0.2, z = 0},
+		minexptime = 0.5,
+		maxexptime = 1.2,
+		minsize = 1,
+		maxsize = 4,
+		texture = "nether_smoke_puff.png^[colorize:#FFF8:96",
+	})
+
 	if node.name == "nether:lava_source" or node.name == "nether:lava_crust" then
 		-- use swap_node to avoid triggering the lava_crust's after_destruct
 		minetest.swap_node(pos, {name = "nether:basalt"})
-		-- evaporate water sitting on Nether lava
-		local pos_above = {x = pos.x, y = pos.y + 1, z = pos.z}
-		local node_above = minetest.get_node(pos_above)
-		if minetest.get_item_group(node_above.name, "water") > 0 then
-			-- cools_lava might be a better group to check for, but perhaps there's
-			-- something in that group that isn't a liquid and shouldn't be evaporated?
-			minetest.swap_node(pos_above, {name="air"})
-		end
 
 		minetest.sound_play("default_cool_lava",
 			{pos = pos, max_hear_distance = 16, gain = 0.25}, true)
