@@ -77,7 +77,7 @@ minetest.register_node("nether:rack", {
 
 -- Deep Netherrack, found in the central magma layers
 minetest.register_node("nether:rack_deep", {
-	description = S("Deep Netherrack"),
+	description = S("Deep-Netherrack"),
 	tiles = {"nether_rack_deep.png"},
 	is_ground_content = true,
 	groups = {cracky = 3, level = 2},
@@ -105,7 +105,7 @@ minetest.register_node("nether:glowstone", {
 })
 
 minetest.register_node("nether:glowstone_deep", {
-	description = S("Deep Glowstone"),
+	description = S("Deep-Glowstone"),
 	tiles = {"nether_glowstone_deep.png"},
 	is_ground_content = true,
 	light_source = 14,
@@ -305,8 +305,8 @@ nether.cool_lava = function(pos, node)
 	minetest.add_particlespawner({
 		amount = 20,
 		time = 0.15,
-		minpos = {x=pos.x - 0.5, y=pos.y - 0,   z=pos.z - 0.5},
-		maxpos = {x=pos.x + 0.5, y=pos.y + 0.5, z=pos.z + 0.5},
+		minpos = {x=pos.x - 0.4, y=pos.y - 0,   z=pos.z - 0.4},
+		maxpos = {x=pos.x + 0.4, y=pos.y + 0.5, z=pos.z + 0.4},
 		minvel = {x = -0.5, y = 0.5, z = -0.5},
 		maxvel = {x =  0.5, y = 1.5, z =  0.5},
 		minacc = {x = 0, y = 0.1, z = 0},

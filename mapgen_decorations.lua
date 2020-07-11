@@ -150,7 +150,7 @@ minetest.register_decoration({
 
 
 local schematic_BasaltStalactite = {
-    size = {x = 3, y = 20, z = 3},
+    size = {x = 3, y = 23, z = 3},
     data = { -- note that data is upside down
 
         _, _, _,
@@ -169,10 +169,13 @@ local schematic_BasaltStalactite = {
         _, B, _,
         _, B, _,
         _, B, _,
+        _, B, _,
         B, B, B,
         B, B, B,
         B, B, B,
-        B, B, B,
+        _, B, _,
+        _, _, _,
+        _, _, _,
 
         _, B, _,  -- ypos 0, prob 85% (218/255)
         _, B, _,  -- ypos 1, prob 85% (218/255)
@@ -194,6 +197,9 @@ local schematic_BasaltStalactite = {
         B, B, B,  -- ypos 17, prob 100%
         B, B, B,  -- ypos 18, prob 100%
         B, B, B,  -- ypos 19, prob 75% (192/256)
+        B, B, B,  -- ypos 20, prob 85% (218/255)
+        _, B, B,  -- ypos 21, prob 50% (128/256) to make half of stalactites asymmetric
+        _, B, _,  -- ypos 22, prob 100%
 
         _, _, _,
         _, _, _,
@@ -211,16 +217,21 @@ local schematic_BasaltStalactite = {
         _, B, _,
         _, B, _,
         _, B, _,
+        _, B, _,
         B, B, B,
         B, B, B,
         B, B, B,
-        B, B, B,
+        _, B, _,
+        _, B, _,
+        _, _, _,
 
     },
     -- Y-slice probabilities do not function correctly for ceiling schematic
     -- decorations because they are inverted, so ypos numbers have been inverted
     -- to match, and a larger offset in place_offset_y should be used (e.g. -3).
     yslice_prob = {
+        {ypos = 21, prob = 128},
+        {ypos = 20, prob = 218},
         {ypos = 19, prob = 192},
         {ypos = 14, prob = 192},
         {ypos = 13, prob = 192},
@@ -264,7 +275,7 @@ for i, node in ipairs(schematic_BasaltStalactite.yslice_prob) do
 end
 
 minetest.register_decoration({
-    name = "Deep glowstone stalactite",
+    name = "Deep-glowstone stalactite",
     deco_type = "schematic",
     place_on = "nether:rack_deep",
     sidelen = 80,
@@ -279,7 +290,7 @@ minetest.register_decoration({
 })
 
 minetest.register_decoration({
-    name = "Deep glowstone stalactite outgrowth",
+    name = "Deep-glowstone stalactite outgrowth",
     deco_type = "schematic",
     place_on = "nether:glowstone_deep",
     sidelen = 40,
@@ -297,7 +308,7 @@ minetest.register_decoration({
 
 
 minetest.register_decoration({
-    name = "Deep Netherrack stalactite",
+    name = "Deep-netherrack stalactite",
     deco_type = "schematic",
     place_on = "nether:rack_deep",
     sidelen = 80,
@@ -339,7 +350,7 @@ minetest.register_decoration({
     y_min = nether.DEPTH_FLOOR,
     schematic = schematic_BasaltStalagmite,
     flags = "place_center_x,place_center_z,force_placement,all_floors",
-    --place_offset_y=-6
+    place_offset_y=-2
 })
 
 
