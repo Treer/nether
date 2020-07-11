@@ -284,14 +284,18 @@ lavasea_source.inventory_image = minetest.inventorycube(
 minetest.register_node("nether:lava_source", lavasea_source)
 
 
+-- a place to store the original ABM function so nether.cool_lava() can call it
 local original_cool_lava_action
+
 nether.cool_lava = function(pos, node)
 
 	local pos_above = {x = pos.x, y = pos.y + 1, z = pos.z}
 	local node_above = minetest.get_node(pos_above)
 
-	-- evaporate water sitting above lava
-	if minetest.get_node_group(node_above.name, "water") > 0 then
+	-- Evaporate water sitting above lava, if it's in the Nether.
+	-- (we don't want Nether mod to affect overworld lava mechanics)
+	if minetest.get_node_group(node_above.name, "water") > 0 and
+		pos.y < nether.DEPTH_CEILING and pos.y > nether.DEPTH_FLOOR then
 		-- cools_lava might be a better group to check for, but perhaps there's
 		-- something in that group that isn't a liquid and shouldn't be evaporated?
 		minetest.swap_node(pos_above, {name="air"})
@@ -299,7 +303,7 @@ nether.cool_lava = function(pos, node)
 
 	-- add steam to cooling lava
 	minetest.add_particlespawner({
-		amount = 12,
+		amount = 20,
 		time = 0.15,
 		minpos = {x=pos.x - 0.5, y=pos.y - 0,   z=pos.z - 0.5},
 		maxpos = {x=pos.x + 0.5, y=pos.y + 0.5, z=pos.z + 0.5},
@@ -308,10 +312,16 @@ nether.cool_lava = function(pos, node)
 		minacc = {x = 0, y = 0.1, z = 0},
 		maxacc = {x = 0, y = 0.2, z = 0},
 		minexptime = 0.5,
-		maxexptime = 1.2,
-		minsize = 1,
-		maxsize = 4,
-		texture = "nether_smoke_puff.png^[colorize:#FFF8:96",
+		maxexptime = 1.3,
+		minsize = 1.5,
+		maxsize = 3.5,
+		texture = "nether_particle_anim4.png",
+		animation = {
+			type = "vertical_frames",
+			aspect_w = 7,
+			aspect_h = 7,
+			length = 1.4,
+		}
 	})
 
 	if node.name == "nether:lava_source" or node.name == "nether:lava_crust" then
