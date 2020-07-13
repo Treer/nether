@@ -160,7 +160,7 @@ minetest.register_ore({
 	ore_type       = "scatter",
 	ore            = "default:lava_source",
 	wherein        = "nether:rack_deep",
-	clust_scarcity = 35 * 35 * 35,
+	clust_scarcity = 36 * 36 * 36,
 	clust_num_ores = 4,
 	clust_size     = 2,
 	y_max = NETHER_CEILING,
@@ -172,7 +172,7 @@ minetest.register_ore({
 	ore            = "nether:lava_crust",
 	wherein        = "nether:rack_deep",
 	clust_scarcity = 16 * 16 * 16,
-	clust_num_ores = 3,
+	clust_num_ores = 4,
 	clust_size     = 2,
 	y_max = NETHER_CEILING,
 	y_min = NETHER_FLOOR,
@@ -464,10 +464,11 @@ end
 
 
 
-local caveperlin
-minetest.register_chatcommand("whereami",
+local caveperlin = nil
+minetest.register_chatcommand("nether_whereami",
     {
-        description = "Describes which region of the nether the player is in",
+		description = "Describes which region of the nether the player is in",
+		privs = {debug = true},
 		func = function(name, param)
 
 			local player = minetest.get_player_by_name(name)
