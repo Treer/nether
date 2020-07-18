@@ -215,10 +215,24 @@ local np_cave = {
 	--flags = ""
 }
 
+-- 2D noise for basalt formations
+local np_basalt = {
+    offset      =-1.65,
+    scale       = 1,
+    spread      = {x = 46, y = 46, z = 46},
+    seed        = 1000,
+    octaves     = 5,
+    persistence = 0.6,
+	lacunarity  = 2.6,
+	flags = "absvalue, eased" -- No ease
+}
+
 -- Buffers and objects we shouldn't recreate every on_generate
 
 local nobj_cave = nil
+local nobj_basalt = nil
 local nbuf_cave = {}
+local nbuf_basalt = {}
 local dbuf = {}
 
 local yblmin = NETHER_FLOOR   + BLEND * 2
@@ -682,6 +696,9 @@ local function on_generated(minp, maxp, seed)
 	nobj_cave = nobj_cave or minetest.get_perlin_map(np_cave, chulens)
 	local nvals_cave = nobj_cave:get_3d_map_flat(minp, nbuf_cave)
 
+	-- todo: only init basalt noise if it's needed
+	nobj_basalt = nobj_basalt or minetest.get_perlin_map(np_basalt, chulens)
+	local nvals_basalt = nobj_basalt:get_2d_map_flat({x=minp.x, y=minp.z}, {x=yCaveStride, y=yCaveStride}, nbuf_basalt)
 
 	local dungeonRooms = build_dungeon_room_list(data, area)
 	local abs_cave_noise, abs_cave_noise_adjusted
@@ -707,6 +724,7 @@ local function on_generated(minp, maxp, seed)
 		for z = z0, z1 do
 			local vi = area:index(x0, y, z) -- Initial voxelmanip index
 			local ni = (z - z0) * zCaveStride + (y - y0) * yCaveStride + 1
+			local noise2di = 1 + (z - z0) * yCaveStride
 
 			for x = x0, x1 do
 
@@ -734,6 +752,10 @@ local function on_generated(minp, maxp, seed)
 					if above_lavasea and abs_cave_noise_adjusted < BASALT_LIMIT then
 						data[vi] = c_air
 						contains_center = true
+						if nvals_basalt[noise2di] * 20 > (y - sea_level) then
+							-- basalt columns
+							data[vi] = c_basalt
+						end
 					elseif abs_cave_noise_adjusted < SURFACE_CRUST_LIMIT or (below_lavasea and abs_cave_noise_adjusted < CRUST_LIMIT) then
 						data[vi] = c_lavasea_source
 						contains_ocean = true
@@ -755,6 +777,7 @@ local function on_generated(minp, maxp, seed)
 
 				ni = ni + 1
 				vi = vi + 1
+				noise2di = noise2di + 1
 			end
 		end
 	end
