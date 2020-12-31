@@ -199,11 +199,11 @@ end
 
 -- Central nether nodes
 
--- Basalt is intended as another portalstone - an alternative to obsidian that's available
+-- Nether basalt is intended as another portalstone - an alternative to obsidian that's available
 -- for other mods to use. It cannot be found in the regions of the nether where Nether portals
 -- link to, so requires a journey to obtain.
 minetest.register_node("nether:basalt", {
-	description = S("Basalt"),
+	description = S("Blue Basalt"),
 	tiles = {
 		"nether_basalt.png",
 		"nether_basalt.png",
@@ -241,7 +241,7 @@ minetest.register_node("nether:basalt_hewn", {
 
 -- Lava-sea source
 -- This is a lava source using a different animated texture so that each node
--- is out of phase in its animation from its neighbour. This prevents the lava
+-- is out of phase in its animation from its neighbor. This prevents the lava
 -- sea from visually clumping together into a patchwork of 16x16 squares.
 -- It can only be used in the biomes-based mapgen, since it requires the MT 5.0
 -- world-align texture features.
@@ -407,6 +407,22 @@ local function smash_lava_crust(pos, playsound)
 	minetest.add_particlespawner(lava_particlespawn_def)
 
 	minetest.set_node(pos, {name = "default:lava_source"})
+
+	if math.random(1, 3) == 1 and minetest.registered_nodes["fire:basic_flame"] ~= nil then
+		-- occasionally brief flames will be seen when breaking lava crust
+		local posAbove = {x = pos.x, y = pos.y + 1, z = pos.z}
+		if minetest.get_node(posAbove).name == "air" then
+			minetest.set_node(posAbove, {name = "fire:basic_flame"})
+			minetest.get_node_timer(posAbove):set(math.random(7, 15) / 10, 0)
+			--[[ commented out because the flame sound plays for too long
+			if minetest.global_exists("fire") and fire.update_player_sound ~= nil then
+				-- The fire mod only updates its sound every 3 seconds, these flames will be
+				-- out by then, so start the sound immediately
+				local players = minetest.get_connected_players()
+				for n = 1, #players do fire.update_player_sound(players[n]) end
+			end]]
+		end
+	end
 
 	if playsound then
 		minetest.sound_play(
