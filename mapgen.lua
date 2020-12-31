@@ -27,10 +27,20 @@ local NETHER_FLOOR   = nether.DEPTH_FLOOR
 local TCAVE = 0.6
 local BLEND = 128
 
+-- parameters for central region
+local REGION_BUFFER_THICKNESS   = 0.2
+local CENTER_REGION_LIMIT       = TCAVE - REGION_BUFFER_THICKNESS -- Netherrack gives way to Deep-Netherrack here
+local CENTER_CAVERN_LIMIT       = CENTER_REGION_LIMIT - 0.1       -- Deep-Netherrack gives way to air here
+local SURFACE_CRUST_LIMIT       = CENTER_CAVERN_LIMIT * 0.25      -- Crusted-lava at the surface of the lava ocean gives way to liquid lava here
+local CRUST_LIMIT               = CENTER_CAVERN_LIMIT * 0.85      -- Crusted-lava under the surface of the lava ocean gives way to liquid lava here
+local BASALT_COLUMN_UPPER_LIMIT = CENTER_CAVERN_LIMIT * 0.9       -- Basalt columns may appear between these upper and lower limits
+local BASALT_COLUMN_LOWER_LIMIT = CENTER_CAVERN_LIMIT * 0.25      -- This value is close to SURFACE_CRUST_LIMIT so basalt columns give way to "flowing" lava rivers
+
 
 -- Stuff
 
 local math_max, math_min, math_abs, math_floor = math.max, math.min, math.abs, math.floor -- avoid needing table lookups each time a common math function is invoked
+local debugf = nether.debug
 
 if minetest.read_schematic == nil then
 	-- Using biomes to create the Nether requires the ability for biomes to set "node_cave_liquid = air".
@@ -448,15 +458,6 @@ function decorate_dungeons(data, area, rooms)
 end
 
 
-local REGION_BUFFER_THICKNESS   = 0.2
-local CENTER_REGION_LIMIT       = TCAVE - REGION_BUFFER_THICKNESS -- Netherrack gives way to Deep-Netherrack here
-local CENTER_CAVERN_LIMIT       = CENTER_REGION_LIMIT - 0.1       -- Deep-Netherrack gives way to air here
-local SURFACE_CRUST_LIMIT       = CENTER_CAVERN_LIMIT * 0.25      -- Crusted-lava at the surface of the lava ocean gives way to liquid lava here
-local CRUST_LIMIT               = CENTER_CAVERN_LIMIT * 0.85      -- Crusted-lava under the surface of the lava ocean gives way to liquid lava here
-local BASALT_COLUMN_UPPER_LIMIT = CENTER_CAVERN_LIMIT * 0.9       -- Basalt columns may appear between these upper and lower limits
-local BASALT_COLUMN_LOWER_LIMIT = CENTER_CAVERN_LIMIT * 0.25      -- This value is close to SURFACE_CRUST_LIMIT so basalt columns give way to "flowing" lava rivers
-
-
 -- Returns (absolute height, fractional distance from ceiling or sea floor)
 -- the fractional distance from ceiling or sea floor is a value between 0 and 1 (inclusive)
 -- Note it may find the most relevent sea-level - not necesssarily the one you are closest
@@ -857,7 +858,8 @@ local function on_generated(minp, maxp, seed)
 		pathway_chunk_count = pathway_chunk_count + 1
 	end
 	if total_chunk_count % 50 == 0 then
-		minetest.chat_send_all(pathway_chunk_count .. " of " .. total_chunk_count .. " chunks contain both nether and lava-sea (" .. math_floor(pathway_chunk_count * 100 / total_chunk_count) .. "%)")
+		--minetest.chat_send_all(pathway_chunk_count .. " of " .. total_chunk_count .. " chunks contain both nether and lava-sea (" .. math_floor(pathway_chunk_count * 100 / total_chunk_count) .. "%)")
+		debugf("%s of %s chunks contain both nether and lava-sea (%s%)", pathway_chunk_count, total_chunk_count, math_floor(pathway_chunk_count * 100 / total_chunk_count))
 	end
 
 	if contains_center or contains_ocean then

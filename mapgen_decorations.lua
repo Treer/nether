@@ -323,7 +323,6 @@ minetest.register_decoration({
 })
 
 --[[
-
 minetest.register_decoration({
     name = "Basalt stalactite",
     deco_type = "schematic",
@@ -336,8 +335,7 @@ minetest.register_decoration({
     schematic = schematic_BasaltStalactite,
     flags = "place_center_x,place_center_z,force_placement,all_ceilings",
     place_offset_y=-6
-})]]
-
+})
 
 minetest.register_decoration({
     name = "Basalt stalagmite",
@@ -351,9 +349,22 @@ minetest.register_decoration({
     schematic = schematic_BasaltStalagmite,
     flags = "place_center_x,place_center_z,force_placement,all_floors",
     place_offset_y=-2
+})]]
+
+minetest.register_decoration({
+    name = "Deep-netherrack stalagmite",
+    deco_type = "schematic",
+    place_on = "nether:rack_deep",
+    sidelen = 80,
+    fill_ratio = 0.001,
+    biomes = {"nether_caverns"},
+    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
+    y_min = nether.DEPTH_FLOOR,
+    schematic = schematic_BasaltStalagmite,
+    replacements = {["nether:basalt"] = "nether:rack_deep"},
+    flags = "place_center_x,place_center_z,force_placement,all_floors",
+    place_offset_y=-2
 })
-
-
 
 -- =======================================
 --    Concealed crevice / Lava sinkhole
