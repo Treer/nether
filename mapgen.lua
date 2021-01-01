@@ -803,21 +803,28 @@ local function on_generated(minp, maxp, seed)
 
 			for x = x0, x1 do
 
-				local id = data[vi] -- Existing node
-
 				local cave_noise = nvals_cave[ni]
 
 				if cave_noise > tcave then
-					-- prime region
+					-- Prime region
+					-- This was the only region in initial versions of the Nether mod.
+					-- It is the only region that portals from the surface will open into.
 					data[vi] = c_air
 					contains_nether = true
 
 				elseif -cave_noise > tcave then
-					-- secondary/spare region
+					-- Secondary/spare region
+					-- This secondary region is unused, until someone wants to do something novel with it.
+					-- Reaching here would require the player to first find and journey through the central region,
+					-- as it's never found near the Prime region.
 					data[vi] = c_air
 
+					-- Only set contains_nether to true if you want tunnels created between the secondary region
+					-- and the central region.
+					--contains_nether = true
 				else
 					-- netherrack walls and/or center region
+					local id = data[vi] -- Existing node
 					abs_cave_noise = math_abs(cave_noise)
 
 					-- abs_cave_noise_adjusted makes the center region smaller as distance from the lava ocean
