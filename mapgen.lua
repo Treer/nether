@@ -35,7 +35,9 @@ local SURFACE_CRUST_LIMIT       = CENTER_CAVERN_LIMIT * 0.25      -- Crusted-lav
 local CRUST_LIMIT               = CENTER_CAVERN_LIMIT * 0.85      -- Crusted-lava under the surface of the lava ocean gives way to liquid lava here
 local BASALT_COLUMN_UPPER_LIMIT = CENTER_CAVERN_LIMIT * 0.9       -- Basalt columns may appear between these upper and lower limits
 local BASALT_COLUMN_LOWER_LIMIT = CENTER_CAVERN_LIMIT * 0.25      -- This value is close to SURFACE_CRUST_LIMIT so basalt columns give way to "flowing" lava rivers
-
+local DUNGEON_BUFFER_THICKNESS   = 0.17
+local DUNGEON_UPPER_LIMIT       = TCAVE + DUNGEON_BUFFER_THICKNESS
+local DUNGEON_LOWER_LIMIT       = CENTER_CAVERN_LIMIT - DUNGEON_BUFFER_THICKNESS
 
 -- Stuff
 
@@ -804,8 +806,16 @@ local function on_generated(minp, maxp, seed)
 			for x = x0, x1 do
 
 				local cave_noise = nvals_cave[ni]
+				local id = data[vi] -- Existing node
 
-				if cave_noise > tcave then
+				if id ~= c_native_mapgen and
+					(id == c_dungeonbrick or id == c_dungeonbrick_alt) and
+					math_abs(cave_noise) < DUNGEON_UPPER_LIMIT and
+					math_abs(cave_noise) > DUNGEON_LOWER_LIMIT then
+					-- Allow dungeons to extend a little from the netherrack walls, even if
+					-- this can sometimes create floating bits
+
+				elseif cave_noise > tcave then
 					-- Prime region
 					-- This was the only region in initial versions of the Nether mod.
 					-- It is the only region that portals from the surface will open into.
@@ -824,7 +834,6 @@ local function on_generated(minp, maxp, seed)
 					--contains_nether = true
 				else
 					-- netherrack walls and/or center region
-					local id = data[vi] -- Existing node
 					abs_cave_noise = math_abs(cave_noise)
 
 					-- abs_cave_noise_adjusted makes the center region smaller as distance from the lava ocean
