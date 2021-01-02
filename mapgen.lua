@@ -534,6 +534,97 @@ minetest.register_chatcommand("nether_whereami",
 	}
 )
 
+-- returns the smallest component in the vector
+function vector_min(v)
+	return math_min(v.x, math_min(v.y, v.z))
+end
+
+
+function draw_pathway2(data, area, nether_pos, center_pos, minp, maxp)
+
+	local dist = math_floor(vector.distance(nether_pos, center_pos))
+
+	local step = vector.subtract(center_pos, nether_pos)
+	local ystride = area.ystride
+	local zstride = area.zstride
+
+	-- first pass: record path details
+	local linedata = {}
+	local last_pos = {}
+	local line_index = 1
+	local first_filled_index, boundary_index, last_filled_index
+	for i = 0, dist do
+		-- bresenham's line would be good here, but too much lua code
+		local pos = vector.round(vector.add(nether_pos, vector.multiply(step, i / dist)))
+		if not vector.equals(pos, last_pos) then
+			local vi = area:indexp(pos)
+			local node_id = data[vi]
+			linedata[line_index] = {
+				pos = pos,
+				vi = vi,
+				node_id = node_id
+			}
+			if boundary_index == nil and node_id == c_netherrack_deep then
+				boundary_index = line_index
+			end
+			if node_id == c_air then
+				if boundary_index ~= nil and last_filled_index == nil then
+					last_filled_index = line_index
+				end
+			else
+				if first_filled_index == nil then
+					first_filled_index = line_index
+				end
+			end
+			line_index = line_index + 1
+			last_pos = pos
+		end
+	end
+	first_filled_index = first_filled_index or 1
+	last_filled_index  = last_filled_index  or #linedata
+	boundary_index     = boundary_index     or last_filled_index
+
+
+	-- limit tunnel radius to roughly the closest that startPos or stopPos comes to minp-maxp, so we
+	-- don't end up exceeding minp-maxp and having excavation filled in when the next chunk is generated.
+	local startPos, stopPos = linedata[first_filled_index].pos, linedata[last_filled_index].pos
+	local radiusLimit = vector_min(vector.subtract(startPos, minp))
+	radiusLimit = math_min(radiusLimit, vector_min(vector.subtract(stopPos, minp)))
+	radiusLimit = math_min(radiusLimit, vector_min(vector.subtract(maxp, startPos)))
+	radiusLimit = math_min(radiusLimit, vector_min(vector.subtract(maxp, stopPos)))
+
+	if radiusLimit < 5 then
+		debugf("Error: radiusLimit %s is smaller then half the sampling distance. min %s, max %s, start %s, stop %s", radiusLimit, minp, maxp, startPos, stopPos) -- shouldn't be possible
+	end
+	radiusLimit = radiusLimit + 1 -- chunk walls wont be visibly flat if the radius only exceeds it a little ;)
+
+	-- second pass: excavate
+	math.randomseed(minp.x + 10 * minp.y + 100 * minp.z) -- so each tunnel generates deterministically
+	local start_index, stop_index = math_max(1, first_filled_index - 2), math_min(#linedata, last_filled_index + 3)
+	local radius = math_min(radiusLimit, math.random(45, 70) / 10) -- start the tunnel big on the nether side
+	for i = start_index, stop_index, 4 do
+		local radiusCubed = radius * radius
+		local radiusCeil = math_floor(radius + 0.5)
+		local vi = linedata[i].vi
+		for x = -radiusCeil, radiusCeil do
+			for y = -radiusCeil, radiusCeil do
+				local xSquaredPlusYSquared = x * x + y * y
+				for z = -radiusCeil, radiusCeil do
+					if xSquaredPlusYSquared + z * z < radiusCubed then
+						data[vi + x + y * ystride + z * zstride] = c_air
+					end
+				end
+			end
+		end
+		radius = math_min(radiusLimit, math.random(30, 60) / 10)
+	end
+
+	for i = start_index, stop_index, 4 do data[linedata[i].vi] = c_glowstone end
+
+end
+
+
+
 function draw_pathway(data, area, nether_pos, center_pos)
 
 
@@ -658,7 +749,7 @@ function add_basalt_columns(data, area, minp, maxp)
 				fastNoise = 37 * fastNoise + x
 				fastNoise = 37 * fastNoise + math_floor(basaltNoise * 32)
 
-				local columnHeight = basaltNoise * 18 + math_floor(((fastNoise % 41) - 20) / 10)
+				local columnHeight = basaltNoise * 18 + ((fastNoise % 3) - 1)
 
 				-- columns should drop below sealevel where lava rivers are flowing
 				-- i.e. anywhere abs_sealevel_cave_noise < BASALT_COLUMN_LOWER_LIMIT
@@ -743,7 +834,8 @@ function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, m
 		local sealevel, cavern_limit_distance = find_nearest_lava_sealevel(area:position(lowest_vi).y)
 		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
 		if lowest + cavern_noise_adj < CENTER_CAVERN_LIMIT then
-			draw_pathway(data, area, area:position(highest_vi), area:position(lowest_vi))
+			--draw_pathway(data, area, area:position(highest_vi), area:position(lowest_vi))
+			draw_pathway2(data, area, area:position(highest_vi), area:position(lowest_vi), minp, maxp)
 		end
 	end
 end
@@ -866,7 +958,7 @@ local function on_generated(minp, maxp, seed)
 	end
 	if total_chunk_count % 50 == 0 then
 		--minetest.chat_send_all(pathway_chunk_count .. " of " .. total_chunk_count .. " chunks contain both nether and lava-sea (" .. math_floor(pathway_chunk_count * 100 / total_chunk_count) .. "%)")
-		debugf("%s of %s chunks contain both nether and lava-sea (%s%)", pathway_chunk_count, total_chunk_count, math_floor(pathway_chunk_count * 100 / total_chunk_count))
+		debugf("%s of %s chunks contain both nether and lava-sea (%s%%)", pathway_chunk_count, total_chunk_count, math_floor(pathway_chunk_count * 100 / total_chunk_count))
 	end
 
 	if contains_center or contains_ocean then
