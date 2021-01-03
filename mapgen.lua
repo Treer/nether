@@ -227,7 +227,7 @@ local np_cave = {
 
 -- 2D noise for basalt formations
 local np_basalt = {
-	offset      =-0.8,
+	offset      =-0.85,
 	scale       = 1,
 	spread      = {x = 46, y = 46, z = 46},
 	seed        = 1000,
@@ -534,6 +534,21 @@ minetest.register_chatcommand("nether_whereami",
 	}
 )
 
+-- returns an array of points from pos1 and pos2 which deviate from a straight line
+-- but don't venture closer to a chunk boundary than pos1 or pos2
+function generate_waypoints(pos1, pos2, minp, maxp)
+	local result = {}
+	result[1] = pos1
+
+	local dist = math_floor(vector.distance(pos1, pos2))
+	local segments = math_floor(dist / 10)
+
+	result[2] = vector.add(vector.divide(vector.add(pos1, pos2), 2), 5)
+
+	result[#result + 1] = pos2
+	return result
+end
+
 -- returns the smallest component in the vector
 function vector_min(v)
 	return math_min(v.x, math_min(v.y, v.z))
@@ -542,20 +557,25 @@ end
 
 function draw_pathway2(data, area, nether_pos, center_pos, minp, maxp)
 
-	local dist = math_floor(vector.distance(nether_pos, center_pos))
-
-	local step = vector.subtract(center_pos, nether_pos)
 	local ystride = area.ystride
 	local zstride = area.zstride
 
-	-- first pass: record path details
+	local dist = math_floor(vector.distance(nether_pos, center_pos))
+	local waypoints = generate_waypoints(nether_pos, center_pos, minp, maxp)
+
+	-- First pass: record path details
 	local linedata = {}
 	local last_pos = {}
 	local line_index = 1
 	local first_filled_index, boundary_index, last_filled_index
 	for i = 0, dist do
 		-- bresenham's line would be good here, but too much lua code
-		local pos = vector.round(vector.add(nether_pos, vector.multiply(step, i / dist)))
+		local waypointProgress = (#waypoints - 1) * i / dist
+		local segmentIndex = math_min(math_floor(waypointProgress) + 1, #waypoints - 1) -- from the integer portion of waypointProgress
+		local segmentInterp = waypointProgress - (segmentIndex - 1)                     -- the remaining fractional portion
+		local segmentStart = waypoints[segmentIndex]
+		local segmentVector = vector.subtract(waypoints[segmentIndex + 1], segmentStart)
+		local pos = vector.round(vector.add(segmentStart, vector.multiply(segmentVector, segmentInterp)))
 		if not vector.equals(pos, last_pos) then
 			local vi = area:indexp(pos)
 			local node_id = data[vi]
@@ -598,28 +618,58 @@ function draw_pathway2(data, area, nether_pos, center_pos, minp, maxp)
 	end
 	radiusLimit = radiusLimit + 1 -- chunk walls wont be visibly flat if the radius only exceeds it a little ;)
 
-	-- second pass: excavate
-	math.randomseed(minp.x + 10 * minp.y + 100 * minp.z) -- so each tunnel generates deterministically
+	-- Second pass: excavate
+	math.randomseed(minp.x + 10 * minp.y + 100 * minp.z) -- so each tunnel generates deterministically (doesn't have to be a quality seed)
 	local start_index, stop_index = math_max(1, first_filled_index - 2), math_min(#linedata, last_filled_index + 3)
-	local radius = math_min(radiusLimit, math.random(45, 70) / 10) -- start the tunnel big on the nether side
-	for i = start_index, stop_index, 4 do
+	for i = start_index, stop_index, 3 do
+
+		-- Adjust radius so that tunnels start wide but thin out in the middle
+		local distFromEnds = 1 - math_abs(((start_index + stop_index) / 2) - i) / ((stop_index - start_index) / 2) -- from 0 to 1, with 0 at ends and 1 in the middle
+		-- Have it more flaired at the ends, rather than linear.
+		-- i.e. sizeAdj approaches 1 quickly as distFromEnds increases
+		local distFromMiddle = 1 - distFromEnds
+		local sizeAdj = 1 - (distFromMiddle * distFromMiddle * distFromMiddle)
+
+		local radius = math_min(radiusLimit, math.random(50 - (25 * sizeAdj), 80 - (45 * sizeAdj)) / 10)
 		local radiusCubed = radius * radius
 		local radiusCeil = math_floor(radius + 0.5)
 		local vi = linedata[i].vi
-		for x = -radiusCeil, radiusCeil do
+
+		for z = -radiusCeil, radiusCeil do
+			local vi_z = vi + z * zstride
 			for y = -radiusCeil, radiusCeil do
-				local xSquaredPlusYSquared = x * x + y * y
-				for z = -radiusCeil, radiusCeil do
-					if xSquaredPlusYSquared + z * z < radiusCubed then
-						data[vi + x + y * ystride + z * zstride] = c_air
+				local vi_zy = vi_z + y * ystride
+				local xSquaredLimit = radiusCubed - (z * z + y * y)
+				for x = -radiusCeil, radiusCeil do
+					if x * x < xSquaredLimit then
+						data[vi_zy + x] = c_air
 					end
 				end
 			end
 		end
-		radius = math_min(radiusLimit, math.random(30, 60) / 10)
 	end
 
-	for i = start_index, stop_index, 4 do data[linedata[i].vi] = c_glowstone end
+
+	-- Third pass: decorate
+	for i = start_index, stop_index, 3 do data[linedata[i].vi] = c_glowstone end
+
+	-- Add glowstone to make tunnels easyier to find
+	-- https://i.imgur.com/sRA28x7.jpg
+	--[[
+	local vi = linedata[boundary_index].vi
+	local glowcount = 0
+	for x = -6, 6 do
+		for y = -6, 6 do
+			if glowcount > 3 then break end
+			local radius_squared = x * x + y * y
+			if radius_squared < 27 and radius_squared >= 25 then
+				if data[vi + y * ystride + x]           ~= c_air then data[vi + y * ystride + x]           = c_glowstone glowcount = glowcount + 1 end
+				if data[vi + y * ystride + x * zstride] ~= c_air then data[vi + y * ystride + x * zstride] = c_glowstone glowcount = glowcount + 1 end
+				if data[vi + y * zstride + x]           ~= c_air then data[vi + y * zstride + x]           = c_glowstone glowcount = glowcount + 1 end
+			end
+		end
+	end]]
+
 
 end
 
@@ -694,6 +744,7 @@ function draw_pathway(data, area, nether_pos, center_pos)
 	--for i = start_index, stop_index do data[linedata[i].vi] = c_glowstone end
 
 	-- add glowstone to make tunnels easyier to find
+	-- https://i.imgur.com/sRA28x7.jpg
 	local vi = linedata[boundary_index].vi
 	local glowcount = 0
 	for x = -6, 6 do
