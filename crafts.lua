@@ -23,7 +23,15 @@ minetest.register_craft({
     output = "nether:basalt_hewn",
     type = "shapeless",
     recipe = {
-        "nether:basalt",
-        "nether:basalt",
+      "nether:basalt",
+      "nether:basalt",
     },
+})
+
+minetest.register_craft({
+  output = "nether:basalt_chiselled 4",
+  recipe = {
+    {"nether:basalt_hewn", "nether:basalt_hewn"},
+    {"nether:basalt_hewn", "nether:basalt_hewn"}
+  }
 })

@@ -75,7 +75,7 @@ minetest.register_node("nether:rack", {
 	sounds = default.node_sound_stone_defaults(),
 })
 
--- Deep Netherrack, found in the central magma layers
+-- Deep Netherrack, found in the mantle / central magma layers
 minetest.register_node("nether:rack_deep", {
 	description = S("Deep-Netherrack"),
 	tiles = {"nether_rack_deep.png"},
@@ -104,6 +104,7 @@ minetest.register_node("nether:glowstone", {
 	sounds = default.node_sound_glass_defaults(),
 })
 
+-- Deep glowstone, found in the mantle / central magma layers
 minetest.register_node("nether:glowstone_deep", {
 	description = S("Deep-Glowstone"),
 	tiles = {"nether_glowstone_deep.png"},
@@ -214,6 +215,7 @@ minetest.register_node("nether:basalt", {
 	},
 	is_ground_content = true,
 	groups = {cracky = 1, level = 3}, -- set proper digging times and uses, and maybe explosion immune if api handles that
+	on_blast = function() --[[blast proof]] end,
 	sounds = default.node_sound_stone_defaults(),
 })
 
@@ -233,8 +235,37 @@ minetest.register_node("nether:basalt_hewn", {
 		"nether_basalt_hewn.png^[sheet:2x2:0,1",
 		"nether_basalt_hewn.png^[sheet:2x2:1,1"
 	),
-	is_ground_content = true,
+	is_ground_content = false,
 	groups = {cracky = 1, level = 2},
+	on_blast = function() --[[blast proof]] end,
+	sounds = default.node_sound_stone_defaults(),
+})
+
+-- Chiselled basalt is intended as a portalstone - an alternative to obsidian that's available
+-- for other mods to use. It is crafted from basalt
+-- It can only be used in the biomes-based mapgen, since it requires the MT 5.0
+-- world-align texture features.
+--local chiselled_top  = "(nether_basalt_chiselled.png^(nether_chisel.png^[sheet:2x4:0,1^[multiply:#888^[opacity:90))"
+--local chiselled_side = "(nether_basalt_chiselled.png^(nether_chisel.png^[sheet:2x4:0,3^[multiply:#888^[opacity:90))"
+minetest.register_node("nether:basalt_chiselled", {
+	description = S("Chiselled Basalt"),
+	tiles = {
+		"nether_basalt_chiselled_top.png",
+		"nether_basalt_chiselled_top.png" .. "^[transformFY",
+		"nether_basalt_chiselled_side.png",
+		"nether_basalt_chiselled_side.png",
+		"nether_basalt_chiselled_side.png",
+		"nether_basalt_chiselled_side.png"
+	},
+	inventory_image = minetest.inventorycube(
+		"nether_basalt_chiselled_top.png",
+		"nether_basalt_chiselled_side.png",
+		"nether_basalt_chiselled_side.png"
+	),
+	paramtype2 = "facedir",
+	is_ground_content = false,
+	groups = {cracky = 1, level = 2},
+	on_blast = function() --[[blast proof]] end,
 	sounds = default.node_sound_stone_defaults(),
 })
 
