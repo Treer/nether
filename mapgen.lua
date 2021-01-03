@@ -535,15 +535,41 @@ minetest.register_chatcommand("nether_whereami",
 )
 
 -- returns an array of points from pos1 and pos2 which deviate from a straight line
--- but don't venture closer to a chunk boundary than pos1 or pos2
+-- but which don't venture too close to a chunk boundary
 function generate_waypoints(pos1, pos2, minp, maxp)
+
+	local segSize = 10
+	local maxDeviation = 7
+	local minDistanceFromChunkWall = 5
+
+	local pathVec     = vector.subtract(pos2, pos1)
+	local pathVecNorm = vector.normalize(pathVec)
+	local pathLength  = vector.distance(pos1, pos2)
+	local minBound = vector.add(minp, minDistanceFromChunkWall)
+	local maxBound = vector.subtract(maxp, minDistanceFromChunkWall)
+
 	local result = {}
 	result[1] = pos1
 
-	local dist = math_floor(vector.distance(pos1, pos2))
-	local segments = math_floor(dist / 10)
+	local segmentCount = math_floor(pathLength / segSize)
+	for i = 1, segmentCount do
+		local waypoint = vector.add(pos1, vector.multiply(pathVec, i / (segmentCount + 1)))
 
-	result[2] = vector.add(vector.divide(vector.add(pos1, pos2), 2), 5)
+		-- shift waypoint a few blocks in a random direction orthogonally to the pathVec, to make the path crooked.
+		local crossProduct
+		repeat
+			local randomVec = vector.normalize({ x = math.random(-100, 100) / 100, y = math.random(-100, 100) / 100, z = math.random(-100, 100) / 100 })
+			crossProduct = vector.normalize(vector.cross(pathVecNorm, randomVec))
+		until vector.length(crossProduct) > 0
+		waypoint = vector.add(waypoint, vector.multiply(crossProduct, math.random(1, maxDeviation)))
+		waypoint = {
+			x = math_min(maxBound.x, math_max(minBound.x, waypoint.x)),
+			y = math_min(maxBound.y, math_max(minBound.y, waypoint.y)),
+			z = math_min(maxBound.z, math_max(minBound.z, waypoint.z))
+		}
+
+		result[#result + 1] = waypoint
+	end
 
 	result[#result + 1] = pos2
 	return result
@@ -555,11 +581,12 @@ function vector_min(v)
 end
 
 
-function draw_pathway2(data, area, nether_pos, center_pos, minp, maxp)
+function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 
 	local ystride = area.ystride
 	local zstride = area.zstride
 
+	math.randomseed(nether_pos.x + 10 * nether_pos.y + 100 * nether_pos.z) -- so each tunnel generates deterministically (this doesn't have to be a quality seed)
 	local dist = math_floor(vector.distance(nether_pos, center_pos))
 	local waypoints = generate_waypoints(nether_pos, center_pos, minp, maxp)
 
@@ -613,13 +640,14 @@ function draw_pathway2(data, area, nether_pos, center_pos, minp, maxp)
 	radiusLimit = math_min(radiusLimit, vector_min(vector.subtract(maxp, startPos)))
 	radiusLimit = math_min(radiusLimit, vector_min(vector.subtract(maxp, stopPos)))
 
-	if radiusLimit < 5 then
-		debugf("Error: radiusLimit %s is smaller then half the sampling distance. min %s, max %s, start %s, stop %s", radiusLimit, minp, maxp, startPos, stopPos) -- shouldn't be possible
+	if radiusLimit < 4 then
+		-- 4 is (79 - 75), and shouldn't be possible if sampling-skip is 10
+		-- i.e. if sampling-skip is 10 then {5, 15, 25, 35, 45, 55, 65, 75} should be sampled from possible positions 0 to 79
+		debugf("Error: radiusLimit %s is smaller then half the sampling distance. min %s, max %s, start %s, stop %s", radiusLimit, minp, maxp, startPos, stopPos)
 	end
 	radiusLimit = radiusLimit + 1 -- chunk walls wont be visibly flat if the radius only exceeds it a little ;)
 
 	-- Second pass: excavate
-	math.randomseed(minp.x + 10 * minp.y + 100 * minp.z) -- so each tunnel generates deterministically (doesn't have to be a quality seed)
 	local start_index, stop_index = math_max(1, first_filled_index - 2), math_min(#linedata, last_filled_index + 3)
 	for i = start_index, stop_index, 3 do
 
@@ -673,95 +701,6 @@ function draw_pathway2(data, area, nether_pos, center_pos, minp, maxp)
 
 end
 
-
-
-function draw_pathway(data, area, nether_pos, center_pos)
-
-
-	local dist = math_floor(vector.distance(nether_pos, center_pos))
-
-	local step = vector.subtract(center_pos, nether_pos)
-	local ystride = area.ystride
-	local zstride = area.zstride
-
-	-- first pass: record path details
-	local linedata = {}
-	local last_pos = {}
-	local line_index = 1
-	local first_filled_index, boundary_index, last_filled_index
-	for i = 0, dist do
-		-- bresenham's line would be good here, but too much lua code
-		local pos = vector.round(vector.add(nether_pos, vector.multiply(step, i / dist)))
-		if not vector.equals(pos, last_pos) then
-			local vi = area:indexp(pos)
-			local node_id = data[vi]
-			linedata[line_index] = {
-				pos = pos,
-				vi = vi,
-				node_id = node_id
-			}
-			if boundary_index == nil and node_id == c_netherrack_deep then
-				boundary_index = line_index
-			end
-			if node_id == c_air then
-				if boundary_index ~= nil and last_filled_index == nil then
-					last_filled_index = line_index
-				end
-			else
-				if first_filled_index == nil then
-					first_filled_index = line_index
-				end
-			end
-			line_index = line_index + 1
-			last_pos = pos
-		end
-	end
-	first_filled_index = first_filled_index or 1
-	last_filled_index  = last_filled_index  or #linedata
-	boundary_index     = boundary_index     or last_filled_index
-
-	--minetest.chat_send_all((last_filled_index - first_filled_index) .. " instead of " .. dist .. ", with steps reduced to " ..  #linedata)
-
-	-- second pass: excavate
-	-- excavation radius should be limited to half the sampling distance so we don't end up
-	-- exceeding minp-maxp and having excavation filled in when the next chunk is generated.
-	local start_index, stop_index = math_max(1, first_filled_index - 4), math_min(#linedata, last_filled_index + 4)
-	for i = start_index, stop_index do
-		local vi = linedata[i].vi
-		local radius_squared = 26.5 - 3 * (i / (stop_index - start_index + 1))
-		for x = -5, 5 do
-			for y = -5, 5 do
-				if x * x + y * y < radius_squared then
-					data[vi + y * ystride + x]           = c_air
-					data[vi + y * ystride + x * zstride] = c_air
-					data[vi + y * zstride + x]           = c_air
-				end
-			end
-		end
-	end
-
-	-- thrid pass: decorate
-	--for i = start_index, stop_index do data[linedata[i].vi] = c_glowstone end
-
-	-- add glowstone to make tunnels easyier to find
-	-- https://i.imgur.com/sRA28x7.jpg
-	local vi = linedata[boundary_index].vi
-	local glowcount = 0
-	for x = -6, 6 do
-		for y = -6, 6 do
-			if glowcount > 3 then break end
-			local radius_squared = x * x + y * y
-			if radius_squared < 27 and radius_squared >= 25 then
-				if data[vi + y * ystride + x]           ~= c_air then data[vi + y * ystride + x]           = c_glowstone glowcount = glowcount + 1 end
-				if data[vi + y * ystride + x * zstride] ~= c_air then data[vi + y * ystride + x * zstride] = c_glowstone glowcount = glowcount + 1 end
-				if data[vi + y * zstride + x]           ~= c_air then data[vi + y * zstride + x]           = c_glowstone glowcount = glowcount + 1 end
-			end
-		end
-	end
-
-
-
-end
 
 function add_basalt_columns(data, area, minp, maxp)
 	-- Basalt columns are structures found at lava oceans. Their x, z position is
@@ -837,7 +776,7 @@ function add_basalt_columns(data, area, minp, maxp)
 end
 
 
-
+-- excavates a tunnel connecting the Primary or Secondary region with the mantle / central region
 function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp)
 
 	local extent = vector.subtract(maxp, minp)
@@ -860,7 +799,7 @@ function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, m
 		if minp.y + y > sealevel then -- only create tunnels above sea level
 			for z = 0, extent.z - 1, skip do
 
-				vi = vi_offset + y * area.ystride + z * area.zstride + 1
+				vi = vi_offset + y * area.ystride + z * area.zstride
 				ni = z * zCaveStride + y * yCaveStride + 1
 				for x = 0, extent.x - 1, skip do
 
@@ -885,8 +824,7 @@ function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, m
 		local sealevel, cavern_limit_distance = find_nearest_lava_sealevel(area:position(lowest_vi).y)
 		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
 		if lowest + cavern_noise_adj < CENTER_CAVERN_LIMIT then
-			--draw_pathway(data, area, area:position(highest_vi), area:position(lowest_vi))
-			draw_pathway2(data, area, area:position(highest_vi), area:position(lowest_vi), minp, maxp)
+			excavate_pathway(data, area, area:position(highest_vi), area:position(lowest_vi), minp, maxp)
 		end
 	end
 end
