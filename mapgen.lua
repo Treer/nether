@@ -37,9 +37,7 @@ local BASALT_COLUMN_UPPER_LIMIT = CENTER_CAVERN_LIMIT * 0.9       -- Basalt colu
 local BASALT_COLUMN_LOWER_LIMIT = CENTER_CAVERN_LIMIT * 0.25      -- This value is close to SURFACE_CRUST_LIMIT so basalt columns give way to "flowing" lava rivers
 
 
--- Stuff
 
-local math_max, math_min, math_abs, math_floor = math.max, math.min, math.abs, math.floor -- avoid needing table lookups each time a common math function is invoked
 local debugf = nether.debug
 
 if minetest.read_schematic == nil then
@@ -50,6 +48,28 @@ if minetest.read_schematic == nil then
 	-- for whether the Minetest engine is recent enough to have implemented node_cave_liquid=air
 	error("This " .. nether.modname .. " mapgen requires Minetest v5.1 or greater, use mapgen_nobiomes.lua instead.", 0)
 end
+
+
+-- Misc math functions
+
+local math_max, math_min, math_abs, math_floor = math.max, math.min, math.abs, math.floor -- avoid needing table lookups each time a common math function is invoked
+
+function random_unit_vector()
+	return vector.normalize({
+		x = math.random() - 0.5,
+		y = math.random() - 0.5,
+		z = math.random() - 0.5
+	})
+end
+
+-- returns the smallest component in the vector
+function vector_min(v)
+	return math_min(v.x, math_min(v.y, v.z))
+end
+
+
+
+-- Inject nether_caverns biome
 
 local function override_underground_biomes()
 	-- https://forum.minetest.net/viewtopic.php?p=257522#p257522
@@ -458,6 +478,9 @@ function decorate_dungeons(data, area, rooms)
 end
 
 
+-- Mantle (AKA Center region) mapgen functions
+
+
 -- Returns (absolute height, fractional distance from ceiling or sea floor)
 -- the fractional distance from ceiling or sea floor is a value between 0 and 1 (inclusive)
 -- Note it may find the most relevent sea-level - not necesssarily the one you are closest
@@ -481,7 +504,6 @@ local function find_nearest_lava_sealevel(y)
 end
 
 
-
 local caveperlin = nil
 minetest.register_chatcommand("nether_whereami",
     {
@@ -500,13 +522,22 @@ minetest.register_chatcommand("nether_whereami",
 			caveperlin = caveperlin or minetest.get_perlin(np_cave)
 			local densityNoise = caveperlin:get_3d(pos)
 			local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(pos.y)
+			local floorAndCeilingBlend = 0 -- normally 0, goes to 1 or higher if y gets too close to the ceiling
+			if pos.y > yblmax then floorAndCeilingBlend = ((pos.y - yblmax) / BLEND) ^ 2 end
+			if pos.y < yblmin then floorAndCeilingBlend = ((yblmin - pos.y) / BLEND) ^ 2 end
+			local tcave   = TCAVE + floorAndCeilingBlend
+			local tmantle = CENTER_REGION_LIMIT - (CENTER_REGION_LIMIT * floorAndCeilingBlend)
+			local cavern_noise_adj =
+				CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) +
+				CENTER_REGION_LIMIT * floorAndCeilingBlend
+
 			local desc
 
-			if densityNoise > 0.6 then
+			if densityNoise > tcave then
 				desc = "Positive nether"
-			elseif densityNoise < -0.6 then
+			elseif -densityNoise > tcave then
 				desc = "Negative nether"
-			elseif math_abs(densityNoise) < CENTER_REGION_LIMIT then
+			elseif math_abs(densityNoise) < tmantle then
 				desc =  "Nether Core"
 
 				local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
@@ -529,22 +560,89 @@ minetest.register_chatcommand("nether_whereami",
 				desc = desc .. ", " .. sea_pos .. "m below lava-sea level"
 			end
 
+			if floorAndCeilingBlend > 0 then
+				desc = desc .. ", approaching y boundary of Nether"
+			end
+
 			return true, "[Perlin " .. (math_floor(densityNoise * 1000) / 1000) .. "] " .. desc
 		end
 	}
 )
 
-function random_unit_vector()
-	return vector.normalize({
-		x = math.random() - 0.5,
-		y = math.random() - 0.5,
-		z = math.random() - 0.5
-	})
-end
 
--- returns the smallest component in the vector
-function vector_min(v)
-	return math_min(v.x, math_min(v.y, v.z))
+function add_basalt_columns(data, area, minp, maxp)
+	-- Basalt columns are structures found in lava oceans, and the only way to obtain
+	-- nether basalt.
+	-- Their x, z position is determined by a 2d noise map and a 2d slice of the cave
+	-- noise (taken at lava-sealevel).
+
+	local x0, y0, z0 = minp.x, math_max(minp.y, NETHER_FLOOR),   minp.z
+	local x1, y1, z1 = maxp.x, math_min(maxp.y, NETHER_CEILING), maxp.z
+
+	local yStride = area.ystride
+	local yCaveStride = x1 - x0 + 1
+
+	local nobj_cave_point = minetest.get_perlin(np_cave)
+	nobj_basalt = nobj_basalt or minetest.get_perlin_map(np_basalt, {x = yCaveStride, y = yCaveStride})
+	local nvals_basalt = nobj_basalt:get_2d_map_flat({x=minp.x, y=minp.z}, {x=yCaveStride, y=yCaveStride}, nbuf_basalt)
+
+	local nearest_sea_level, _ = find_nearest_lava_sealevel(math_floor((y0 + y1) / 2))
+
+	local leeway = CENTER_CAVERN_LIMIT * 0.18
+
+	for z = z0, z1 do
+		local noise2di = 1 + (z - z0) * yCaveStride
+
+		for x = x0, x1 do
+
+			local basaltNoise = nvals_basalt[noise2di]
+			if basaltNoise > 0 then
+				-- a basalt column is here
+
+				local abs_sealevel_cave_noise = math_abs(nobj_cave_point:get3d({x = x, y = nearest_sea_level, z = z}))
+
+				-- Add Some quick deterministic noise to the column heights
+				-- This is probably not good noise, but it doesn't have to be.
+				local fastNoise = 17
+				fastNoise = 37 * fastNoise + y0
+				fastNoise = 37 * fastNoise + z
+				fastNoise = 37 * fastNoise + x
+				fastNoise = 37 * fastNoise + math_floor(basaltNoise * 32)
+
+				local columnHeight = basaltNoise * 18 + ((fastNoise % 3) - 1)
+
+				-- columns should drop below sealevel where lava rivers are flowing
+				-- i.e. anywhere abs_sealevel_cave_noise < BASALT_COLUMN_LOWER_LIMIT
+				-- And we'll also have it drop off near the edges of the lava ocean so that
+				-- basalt columns can only be found by the player reaching a lava ocean.
+				local lowerClip = (math_min(math_max(abs_sealevel_cave_noise, BASALT_COLUMN_LOWER_LIMIT - leeway), BASALT_COLUMN_LOWER_LIMIT + leeway) - BASALT_COLUMN_LOWER_LIMIT) / leeway
+				local upperClip = (math_min(math_max(abs_sealevel_cave_noise, BASALT_COLUMN_UPPER_LIMIT - leeway), BASALT_COLUMN_UPPER_LIMIT + leeway) - BASALT_COLUMN_UPPER_LIMIT) / leeway
+				local columnHeightAdj = lowerClip * -upperClip -- all are values between 1 and -1
+
+				columnHeight = columnHeight + math_floor(columnHeightAdj * 12 - 12)
+
+				local vi = area:index(x, y0, z) -- Initial voxelmanip index
+
+				for y = y0, y1 do -- Y loop first to minimise tcave & lava-sea calculations
+
+					if y < nearest_sea_level + columnHeight  then
+
+						local id = data[vi] -- Existing node
+						if id == c_lava_crust or id == c_lavasea_source or (id == c_air and y > nearest_sea_level) then
+							-- Avoid letting columns extend beyond the central region.
+							-- (checking node ids saves having to calculate abs_cave_noise_adjusted here
+							-- to test it against CENTER_CAVERN_LIMIT)
+							data[vi] = c_basalt
+						end
+					end
+
+					vi = vi + yStride
+				end
+			end
+
+			noise2di = noise2di + 1
+		end
+	end
 end
 
 
@@ -649,9 +747,9 @@ function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 	radiusLimit = math_min(radiusLimit, vector_min(vector.subtract(maxp, startPos)))
 	radiusLimit = math_min(radiusLimit, vector_min(vector.subtract(maxp, stopPos)))
 
-	if radiusLimit < 4 then
-		-- 4 is (79 - 75), and shouldn't be possible if sampling-skip is 10
-		-- i.e. if sampling-skip is 10 then {5, 15, 25, 35, 45, 55, 65, 75} should be sampled from possible positions 0 to 79
+	if radiusLimit < 4 then -- This is a logic check, ignore it. It could be commented out
+		-- 4 is (79 - 75), and shouldn't be possible if sampling-skip was 10
+		-- i.e. if sampling-skip was 10 then {5, 15, 25, 35, 45, 55, 65, 75} should be sampled from possible positions 0 to 79
 		debugf("Error: radiusLimit %s is smaller then half the sampling distance. min %s, max %s, start %s, stop %s", radiusLimit, minp, maxp, startPos, stopPos)
 	end
 	radiusLimit = radiusLimit + 1 -- chunk walls wont be visibly flat if the radius only exceeds it a little ;)
@@ -714,80 +812,6 @@ function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 end
 
 
-function add_basalt_columns(data, area, minp, maxp)
-	-- Basalt columns are structures found at lava oceans. Their x, z position is
-	-- determined by a 2d noise map and a 2d slice of the cave noise (taken at lava-sealevel).
-
-	local x0, y0, z0 = minp.x, math_max(minp.y, NETHER_FLOOR),   minp.z
-	local x1, y1, z1 = maxp.x, math_min(maxp.y, NETHER_CEILING), maxp.z
-
-	local yStride = area.ystride
-	local yCaveStride = x1 - x0 + 1
-
-	local nobj_cave_point = minetest.get_perlin(np_cave)
-	nobj_basalt = nobj_basalt or minetest.get_perlin_map(np_basalt, {x = yCaveStride, y = yCaveStride})
-	local nvals_basalt = nobj_basalt:get_2d_map_flat({x=minp.x, y=minp.z}, {x=yCaveStride, y=yCaveStride}, nbuf_basalt)
-
-	local nearest_sea_level, _ = find_nearest_lava_sealevel(math_floor((y0 + y1) / 2))
-
-	local leeway = CENTER_CAVERN_LIMIT * 0.18
-
-	for z = z0, z1 do
-		local noise2di = 1 + (z - z0) * yCaveStride
-
-		for x = x0, x1 do
-
-			local basaltNoise = nvals_basalt[noise2di]
-			if basaltNoise > 0 then
-				-- a basalt column is here
-
-				local abs_sealevel_cave_noise = math_abs(nobj_cave_point:get3d({x = x, y = nearest_sea_level, z = z}))
-
-				-- Add Some quick deterministic noise to the column heights
-				-- This is probably not good noise, but it doesn't have to be.
-				local fastNoise = 17
-				fastNoise = 37 * fastNoise + y0
-				fastNoise = 37 * fastNoise + z
-				fastNoise = 37 * fastNoise + x
-				fastNoise = 37 * fastNoise + math_floor(basaltNoise * 32)
-
-				local columnHeight = basaltNoise * 18 + ((fastNoise % 3) - 1)
-
-				-- columns should drop below sealevel where lava rivers are flowing
-				-- i.e. anywhere abs_sealevel_cave_noise < BASALT_COLUMN_LOWER_LIMIT
-				-- And we'll also have it drop off near the edges of the lava ocean so that
-				-- basalt columns can only be found by the player reaching a lava ocean.
-				local lowerClip = (math_min(math_max(abs_sealevel_cave_noise, BASALT_COLUMN_LOWER_LIMIT - leeway), BASALT_COLUMN_LOWER_LIMIT + leeway) - BASALT_COLUMN_LOWER_LIMIT) / leeway
-				local upperClip = (math_min(math_max(abs_sealevel_cave_noise, BASALT_COLUMN_UPPER_LIMIT - leeway), BASALT_COLUMN_UPPER_LIMIT + leeway) - BASALT_COLUMN_UPPER_LIMIT) / leeway
-				local columnHeightAdj = lowerClip * -upperClip -- all are values between 1 and -1
-
-				columnHeight = columnHeight + math_floor(columnHeightAdj * 12 - 12)
-
-				local vi = area:index(x, y0, z) -- Initial voxelmanip index
-
-				for y = y0, y1 do -- Y loop first to minimise tcave & lava-sea calculations
-
-					if y < nearest_sea_level + columnHeight  then
-
-						local id = data[vi] -- Existing node
-						if id == c_lava_crust or id == c_lavasea_source or (id == c_air and y > nearest_sea_level) then
-							-- Avoid letting columns extend beyond the central region.
-							-- (checking node ids saves having to calculate abs_cave_noise_adjusted here
-							-- to test it against CENTER_CAVERN_LIMIT)
-							data[vi] = c_basalt
-						end
-					end
-
-					vi = vi + yStride
-				end
-			end
-
-			noise2di = noise2di + 1
-		end
-	end
-end
-
-
 -- excavates a tunnel connecting the Primary or Secondary region with the mantle / central region
 function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp)
 
@@ -833,8 +857,16 @@ function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, m
 
 	if lowest < CENTER_CAVERN_LIMIT and highest > TCAVE + 0.03 then
 
-		local sealevel, cavern_limit_distance = find_nearest_lava_sealevel(area:position(lowest_vi).y)
-		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
+		local mantle_y = area:position(lowest_vi).y
+		local sealevel, cavern_limit_distance = find_nearest_lava_sealevel(mantle_y)
+
+		local floorAndCeilingBlend = 0
+		if mantle_y > yblmax then floorAndCeilingBlend = ((mantle_y - yblmax) / BLEND) ^ 2 end
+		if mantle_y < yblmin then floorAndCeilingBlend = ((yblmin - mantle_y) / BLEND) ^ 2 end
+		local cavern_noise_adj =
+			CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) +
+			CENTER_REGION_LIMIT * floorAndCeilingBlend
+
 		if lowest + cavern_noise_adj < CENTER_CAVERN_LIMIT then
 			excavate_pathway(data, area, area:position(highest_vi), area:position(lowest_vi), minp, maxp)
 		end
@@ -873,20 +905,24 @@ local function on_generated(minp, maxp, seed)
 
 	local contains_nether = false
 	local contains_shell  = false
-	local contains_center = false
+	local contains_mantle = false
 	local contains_ocean = false
 
 
 	for y = y0, y1 do -- Y loop first to minimise tcave & lava-sea calculations
 
-		local tcave = TCAVE
-		if y > yblmax then tcave = TCAVE + ((y - yblmax) / BLEND) ^ 2 end
-		if y < yblmin then tcave = TCAVE + ((yblmin - y) / BLEND) ^ 2 end
+		local floorAndCeilingBlend = 0 -- normally 0, goes to 1 or higher if y gets too close to the ceiling
+		if y > yblmax then floorAndCeilingBlend = ((y - yblmax) / BLEND) ^ 2 end
+		if y < yblmin then floorAndCeilingBlend = ((yblmin - y) / BLEND) ^ 2 end
+		local tcave   = TCAVE + floorAndCeilingBlend
+		local tmantle = CENTER_REGION_LIMIT - (CENTER_REGION_LIMIT * floorAndCeilingBlend) -- cavern_noise_adj already contains floorAndCeilingBlend, so tmantle is only for comparisons when cavern_noise_adj hasn't been added to the noise value
 
 		local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(y)
 		local above_lavasea = y > sea_level
 		local below_lavasea = y < sea_level
-		local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
+		local cavern_noise_adj =
+			CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) +
+			CENTER_REGION_LIMIT * floorAndCeilingBlend
 
 
 		for z = z0, z1 do
@@ -907,16 +943,18 @@ local function on_generated(minp, maxp, seed)
 
 				elseif -cave_noise > tcave then
 					-- Secondary/spare region
-					-- This secondary region is unused, until someone wants to do something novel with it.
+					-- This secondary region is unused, until someone decides to do something cool or novel with it.
 					-- Reaching here would require the player to first find and journey through the central region,
-					-- as it's never found near the Prime region.
-					data[vi] = c_air
+					-- as it's always separated from the Prime region by the central region.
+
+					data[vi] = c_netherrack -- For now I've just left this region as solid netherrack instead of air.
 
 					-- Only set contains_nether to true if you want tunnels created between the secondary region
 					-- and the central region.
 					--contains_nether = true
+					--data[vi] = c_air
 				else
-					-- netherrack walls and/or center region
+					-- netherrack walls and/or center region/mantle
 					local id = data[vi] -- Existing node
 					abs_cave_noise = math_abs(cave_noise)
 
@@ -926,7 +964,7 @@ local function on_generated(minp, maxp, seed)
 
 					if above_lavasea and abs_cave_noise_adjusted < CENTER_CAVERN_LIMIT then
 						data[vi] = c_air
-						contains_center = true
+						contains_mantle = true
 					elseif abs_cave_noise_adjusted < SURFACE_CRUST_LIMIT or (below_lavasea and abs_cave_noise_adjusted < CRUST_LIMIT) then
 						data[vi] = c_lavasea_source
 						contains_ocean = true
@@ -935,11 +973,10 @@ local function on_generated(minp, maxp, seed)
 						contains_ocean = true
 					elseif id == c_air or id == c_native_mapgen then
 
-						if abs_cave_noise < CENTER_REGION_LIMIT then
+						if abs_cave_noise < tmantle then
 							data[vi] = c_netherrack_deep
 						else
-							-- the shell seperating the basalt realm from the rest of the nether...
-							-- put some holes in it
+							-- the shell seperating the mantle from the rest of the nether...
 							data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
 							contains_shell = true
 						end
@@ -953,21 +990,17 @@ local function on_generated(minp, maxp, seed)
 		end
 	end
 
-	total_chunk_count = total_chunk_count + 1
-	if contains_nether and contains_shell and contains_center and contains_ocean then
-		pathway_chunk_count = pathway_chunk_count + 1
-	end
-	if total_chunk_count % 50 == 0 then
-		--minetest.chat_send_all(pathway_chunk_count .. " of " .. total_chunk_count .. " chunks contain both nether and lava-sea (" .. math_floor(pathway_chunk_count * 100 / total_chunk_count) .. "%)")
-		debugf("%s of %s chunks contain both nether and lava-sea (%s%%)", pathway_chunk_count, total_chunk_count, math_floor(pathway_chunk_count * 100 / total_chunk_count))
-	end
-
-	if contains_center or contains_ocean then
+	if contains_mantle or contains_ocean then
 		add_basalt_columns(data, area, minp, maxp)
 	end
 
-	if contains_nether and contains_center then
+	if contains_nether and contains_mantle then
 		excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp)
+		pathway_chunk_count = pathway_chunk_count + 1
+	end
+	total_chunk_count = total_chunk_count + 1
+	if total_chunk_count % 50 == 0 then
+		debugf("%s of %s chunks contain both nether and lava-sea (%s%%)", pathway_chunk_count, total_chunk_count, math_floor(pathway_chunk_count * 100 / total_chunk_count))
 	end
 
 	-- any air from the native mapgen has been replaced by netherrack, but we
