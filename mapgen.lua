@@ -534,6 +534,20 @@ minetest.register_chatcommand("nether_whereami",
 	}
 )
 
+function random_unit_vector()
+	return vector.normalize({
+		x = math.random() - 0.5,
+		y = math.random() - 0.5,
+		z = math.random() - 0.5
+	})
+end
+
+-- returns the smallest component in the vector
+function vector_min(v)
+	return math_min(v.x, math_min(v.y, v.z))
+end
+
+
 -- returns an array of points from pos1 and pos2 which deviate from a straight line
 -- but which don't venture too close to a chunk boundary
 function generate_waypoints(pos1, pos2, minp, maxp)
@@ -558,10 +572,10 @@ function generate_waypoints(pos1, pos2, minp, maxp)
 		-- shift waypoint a few blocks in a random direction orthogonally to the pathVec, to make the path crooked.
 		local crossProduct
 		repeat
-			local randomVec = vector.normalize({ x = math.random(-100, 100) / 100, y = math.random(-100, 100) / 100, z = math.random(-100, 100) / 100 })
-			crossProduct = vector.normalize(vector.cross(pathVecNorm, randomVec))
+			crossProduct = vector.normalize(vector.cross(pathVecNorm, random_unit_vector()))
 		until vector.length(crossProduct) > 0
-		waypoint = vector.add(waypoint, vector.multiply(crossProduct, math.random(1, maxDeviation)))
+		local deviation = vector.multiply(crossProduct, math.random(1, maxDeviation))
+		waypoint = vector.add(waypoint, deviation)
 		waypoint = {
 			x = math_min(maxBound.x, math_max(minBound.x, waypoint.x)),
 			y = math_min(maxBound.y, math_max(minBound.y, waypoint.y)),
@@ -573,11 +587,6 @@ function generate_waypoints(pos1, pos2, minp, maxp)
 
 	result[#result + 1] = pos2
 	return result
-end
-
--- returns the smallest component in the vector
-function vector_min(v)
-	return math_min(v.x, math_min(v.y, v.z))
 end
 
 
@@ -596,7 +605,7 @@ function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 	local line_index = 1
 	local first_filled_index, boundary_index, last_filled_index
 	for i = 0, dist do
-		-- bresenham's line would be good here, but too much lua code
+		-- Bresenham's line would be good here, but too much lua code
 		local waypointProgress = (#waypoints - 1) * i / dist
 		local segmentIndex = math_min(math_floor(waypointProgress) + 1, #waypoints - 1) -- from the integer portion of waypointProgress
 		local segmentInterp = waypointProgress - (segmentIndex - 1)                     -- the remaining fractional portion
@@ -661,8 +670,11 @@ function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 		local radius = math_min(radiusLimit, math.random(50 - (25 * sizeAdj), 80 - (45 * sizeAdj)) / 10)
 		local radiusCubed = radius * radius
 		local radiusCeil = math_floor(radius + 0.5)
-		local vi = linedata[i].vi
 
+		linedata[i].radius = radius             -- Needed in third pass
+		linedata[i].distFromEnds = distFromEnds -- Needed in third pass
+
+		local vi = linedata[i].vi
 		for z = -radiusCeil, radiusCeil do
 			local vi_z = vi + z * zstride
 			for y = -radiusCeil, radiusCeil do
@@ -675,29 +687,29 @@ function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 				end
 			end
 		end
+
 	end
 
-
 	-- Third pass: decorate
-	for i = start_index, stop_index, 3 do data[linedata[i].vi] = c_glowstone end
-
-	-- Add glowstone to make tunnels easyier to find
+	-- Add glowstones to make tunnel entrances easyier to find
 	-- https://i.imgur.com/sRA28x7.jpg
-	--[[
-	local vi = linedata[boundary_index].vi
-	local glowcount = 0
-	for x = -6, 6 do
-		for y = -6, 6 do
-			if glowcount > 3 then break end
-			local radius_squared = x * x + y * y
-			if radius_squared < 27 and radius_squared >= 25 then
-				if data[vi + y * ystride + x]           ~= c_air then data[vi + y * ystride + x]           = c_glowstone glowcount = glowcount + 1 end
-				if data[vi + y * ystride + x * zstride] ~= c_air then data[vi + y * ystride + x * zstride] = c_glowstone glowcount = glowcount + 1 end
-				if data[vi + y * zstride + x]           ~= c_air then data[vi + y * zstride + x]           = c_glowstone glowcount = glowcount + 1 end
+	for i = start_index, stop_index, 3 do
+		if linedata[i].distFromEnds < 0.3 then
+			local glowcount = 0
+			local radius = linedata[i].radius
+			for _ = 1, 20 do
+				local testPos = vector.round(vector.add(linedata[i].pos, vector.multiply(random_unit_vector(), radius + 0.5)))
+				local vi = area:indexp(testPos)
+				if data[vi] ~= c_air then
+					data[vi] = c_glowstone
+					glowcount = glowcount + 1
+				--else
+				--	data[vi] = c_debug
+				end
+				if glowcount >= 2 then break end
 			end
 		end
-	end]]
-
+	end
 
 end
 
