@@ -482,14 +482,14 @@ minetest.register_node("nether:lava_crust", {
 				type = "vertical_frames",
 				aspect_w = 32,
 				aspect_h = 32,
-				length = 2,
+				length = 1.8,
 			},
 		}
 	},
 	inventory_image = minetest.inventorycube(
-		"nether_lava_crust_animated.png^[sheet:2x8:0,0",
-		"nether_lava_crust_animated.png^[sheet:2x8:0,1",
-		"nether_lava_crust_animated.png^[sheet:2x8:1,1"
+		"nether_lava_crust_animated.png^[sheet:2x48:0,0",
+		"nether_lava_crust_animated.png^[sheet:2x48:0,1",
+		"nether_lava_crust_animated.png^[sheet:2x48:1,1"
 	),
 	collision_box = {
 		type = "fixed",
