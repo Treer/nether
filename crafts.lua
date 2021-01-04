@@ -1,5 +1,7 @@
 --[[
 
+  Copyright (C) 2013 PilzAdam
+  Copyright (C) 2020 lortas
   Copyright (C) 2020 Treer
 
   Permission to use, copy, modify, and/or distribute this software for
@@ -17,7 +19,30 @@
 
 ]]--
 
+minetest.register_craft({
+	output = "nether:brick 4",
+	recipe = {
+		{"nether:rack", "nether:rack"},
+		{"nether:rack", "nether:rack"},
+	}
+})
 
+minetest.register_craft({
+	output = "nether:fence_nether_brick 6",
+	recipe = {
+		{"nether:brick", "nether:brick", "nether:brick"},
+		{"nether:brick", "nether:brick", "nether:brick"},
+	},
+})
+
+minetest.register_craft({
+	output = "nether:brick_compressed",
+	recipe = {
+		{"nether:brick","nether:brick","nether:brick"},
+		{"nether:brick","nether:brick","nether:brick"},
+		{"nether:brick","nether:brick","nether:brick"},
+	}
+})
 
 minetest.register_craft({
     output = "nether:basalt_hewn",
@@ -35,3 +60,5 @@ minetest.register_craft({
     {"nether:basalt_hewn", "nether:basalt_hewn"}
   }
 })
+
+-- See tools.lua for tools related crafting

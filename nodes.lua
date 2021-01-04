@@ -242,7 +242,7 @@ minetest.register_node("nether:basalt_hewn", {
 })
 
 -- Chiselled basalt is intended as a portalstone - an alternative to obsidian that's available
--- for other mods to use. It is crafted from basalt
+-- for other mods to use. It is crafted from Hewn Basalt.
 -- It can only be used in the biomes-based mapgen, since it requires the MT 5.0
 -- world-align texture features.
 --local chiselled_top  = "(nether_basalt_chiselled.png^(nether_chisel.png^[sheet:2x4:0,1^[multiply:#888^[opacity:90))"
@@ -763,31 +763,3 @@ local airlike_darkness = {}
 for k,v in pairs(minetest.registered_nodes["air"]) do airlike_darkness[k] = v end
 airlike_darkness.paramtype = "none"
 minetest.register_node("nether:airlike_darkness", airlike_darkness)
-
-
--- Crafting
-
-minetest.register_craft({
-	output = "nether:brick 4",
-	recipe = {
-		{"nether:rack", "nether:rack"},
-		{"nether:rack", "nether:rack"},
-	}
-})
-
-minetest.register_craft({
-	output = "nether:fence_nether_brick 6",
-	recipe = {
-		{"nether:brick", "nether:brick", "nether:brick"},
-		{"nether:brick", "nether:brick", "nether:brick"},
-	},
-})
-
-minetest.register_craft({
-	output = "nether:brick_compressed",
-	recipe = {
-		{"nether:brick","nether:brick","nether:brick"},
-		{"nether:brick","nether:brick","nether:brick"},
-		{"nether:brick","nether:brick","nether:brick"},
-	}
-})
