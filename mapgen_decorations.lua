@@ -29,7 +29,7 @@ local _  = {name = "air",                     prob = 0}
 local A  = {name = "air",                     prob = 255, force_place = true}
 local G  = {name = "nether:glowstone",        prob = 255, force_place = true}
 local N  = {name = "nether:rack",             prob = 255}
-local B  = {name = "nether:basalt",           prob = 255}
+local D  = {name = "nether:rack_deep",        prob = 255}
 local S  = {name = "nether:sand",             prob = 255, force_place = true}
 local L  = {name = "default:lava_source",     prob = 255, force_place = true}
 local F  = {name = "nether:fumarole",         prob = 255, force_place = true}
@@ -149,7 +149,7 @@ minetest.register_decoration({
 })
 
 
-local schematic_BasaltStalactite = {
+local schematic_GreaterStalactite = {
     size = {x = 3, y = 23, z = 3},
     data = { -- note that data is upside down
 
@@ -166,40 +166,40 @@ local schematic_BasaltStalactite = {
         _, _, _,
         _, _, _,
         _, _, _,
-        _, B, _,
-        _, B, _,
-        _, B, _,
-        _, B, _,
-        B, B, B,
-        B, B, B,
-        B, B, B,
-        _, B, _,
+        _, D, _,
+        _, D, _,
+        _, D, _,
+        _, D, _,
+        D, D, D,
+        D, D, D,
+        D, D, D,
+        _, D, _,
         _, _, _,
         _, _, _,
 
-        _, B, _,  -- ypos 0, prob 85% (218/255)
-        _, B, _,  -- ypos 1, prob 85% (218/255)
-        _, B, _,  -- ypos 2, prob 85% (218/255)
-        _, B, _,  -- ypos 3, prob 85% (218/255)
-        _, B, _,  -- ypos 4, prob 85% (218/255)
-        _, B, _,  -- ypos 5, prob 85% (218/255)
-        _, B, _,  -- ypos 6, prob 85% (218/255)
-        _, B, _,  -- ypos 7, prob 85% (218/255)
-        _, B, _,  -- ypos 8, prob 85% (218/255)
-        _, B, B,  -- ypos 9, prob 50% (128/256) to make half of stalactites asymmetric
-        _, B, B,  -- ypos 10, prob 50% (128/256) to make half of stalactites asymmetric
-        _, B, B,  -- ypos 11, prob 50% (128/256) to make half of stalactites asymmetric
-        _, B, B,  -- ypos 12, prob 50% (128/256) to make half of stalactites asymmetric
-        B, B, B,  -- ypos 13, prob 75% (192/256)
-        B, B, B,  -- ypos 14, prob 75% (192/256)
-        B, B, B,  -- ypos 15, prob 100%
-        B, B, B,  -- ypos 16, prob 100%
-        B, B, B,  -- ypos 17, prob 100%
-        B, B, B,  -- ypos 18, prob 100%
-        B, B, B,  -- ypos 19, prob 75% (192/256)
-        B, B, B,  -- ypos 20, prob 85% (218/255)
-        _, B, B,  -- ypos 21, prob 50% (128/256) to make half of stalactites asymmetric
-        _, B, _,  -- ypos 22, prob 100%
+        _, D, _,  -- ypos 0, prob 85% (218/255)
+        _, D, _,  -- ypos 1, prob 85% (218/255)
+        _, D, _,  -- ypos 2, prob 85% (218/255)
+        _, D, _,  -- ypos 3, prob 85% (218/255)
+        _, D, _,  -- ypos 4, prob 85% (218/255)
+        _, D, _,  -- ypos 5, prob 85% (218/255)
+        _, D, _,  -- ypos 6, prob 85% (218/255)
+        _, D, _,  -- ypos 7, prob 85% (218/255)
+        _, D, _,  -- ypos 8, prob 85% (218/255)
+        _, D, D,  -- ypos 9, prob 50% (128/256) to make half of stalactites asymmetric
+        _, D, D,  -- ypos 10, prob 50% (128/256) to make half of stalactites asymmetric
+        _, D, D,  -- ypos 11, prob 50% (128/256) to make half of stalactites asymmetric
+        _, D, D,  -- ypos 12, prob 50% (128/256) to make half of stalactites asymmetric
+        D, D, D,  -- ypos 13, prob 75% (192/256)
+        D, D, D,  -- ypos 14, prob 75% (192/256)
+        D, D, D,  -- ypos 15, prob 100%
+        D, D, D,  -- ypos 16, prob 100%
+        D, D, D,  -- ypos 17, prob 100%
+        D, D, D,  -- ypos 18, prob 100%
+        D, D, D,  -- ypos 19, prob 75% (192/256)
+        D, D, D,  -- ypos 20, prob 85% (218/255)
+        _, D, D,  -- ypos 21, prob 50% (128/256) to make half of stalactites asymmetric
+        _, D, _,  -- ypos 22, prob 100%
 
         _, _, _,
         _, _, _,
@@ -213,16 +213,16 @@ local schematic_BasaltStalactite = {
         _, _, _,
         _, _, _,
         _, _, _,
-        _, B, _,
-        _, B, _,
-        _, B, _,
-        _, B, _,
-        _, B, _,
-        B, B, B,
-        B, B, B,
-        B, B, B,
-        _, B, _,
-        _, B, _,
+        _, D, _,
+        _, D, _,
+        _, D, _,
+        _, D, _,
+        _, D, _,
+        D, D, D,
+        D, D, D,
+        D, D, D,
+        _, D, _,
+        _, D, _,
         _, _, _,
 
     },
@@ -253,24 +253,24 @@ local schematic_BasaltStalactite = {
 
 
 
--- a stalagmite is an upsidedown stalactite
-local schematic_BasaltStalagmite = {
-    size = schematic_BasaltStalactite.size,
+-- A stalagmite is an upsidedown stalactite, so
+-- use the GreaterStalactite to create a ToweringStalagmite schematic
+local schematic_ToweringStalagmite = {
+    size = schematic_GreaterStalactite.size,
     data = {},
     yslice_prob = {}
 }
-local array_length = #schematic_BasaltStalactite.data + 1
-for i, node in ipairs(schematic_BasaltStalactite.data) do
-    schematic_BasaltStalagmite.data[array_length - i] = node
+local array_length = #schematic_GreaterStalactite.data + 1
+for i, node in ipairs(schematic_GreaterStalactite.data) do
+    schematic_ToweringStalagmite.data[array_length - i] = node
 end
-array_length = #schematic_BasaltStalactite.yslice_prob + 1
-y_size = schematic_BasaltStalactite.size.y
-for i, node in ipairs(schematic_BasaltStalactite.yslice_prob) do
-    schematic_BasaltStalagmite.yslice_prob[i] = {
+y_size = schematic_GreaterStalactite.size.y
+for i, node in ipairs(schematic_GreaterStalactite.yslice_prob) do
+    schematic_ToweringStalagmite.yslice_prob[i] = {
         -- we can safely lower the prob. to gain more variance because floor based schematics
         -- don't have the bug where missing lines moves them away from the surface
-        prob = schematic_BasaltStalactite.yslice_prob[i].prob - 20,
-        ypos = y_size - 1 - schematic_BasaltStalactite.yslice_prob[i].ypos
+        prob = schematic_GreaterStalactite.yslice_prob[i].prob - 20,
+        ypos = y_size - 1 - schematic_GreaterStalactite.yslice_prob[i].ypos
     }
 end
 
@@ -306,7 +306,6 @@ minetest.register_decoration({
     flags = "place_center_x,place_center_z,all_ceilings",
 })
 
-
 minetest.register_decoration({
     name = "Deep-netherrack stalactite",
     deco_type = "schematic",
@@ -322,45 +321,16 @@ minetest.register_decoration({
     place_offset_y=-3
 })
 
---[[
 minetest.register_decoration({
-    name = "Basalt stalactite",
-    deco_type = "schematic",
-    place_on = "nether:basalt",
-    sidelen = 80,
-    fill_ratio = 0.001,
-    biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
-    y_min = nether.DEPTH_FLOOR,
-    schematic = schematic_BasaltStalactite,
-    flags = "place_center_x,place_center_z,force_placement,all_ceilings",
-    place_offset_y=-6
-})
-
-minetest.register_decoration({
-    name = "Basalt stalagmite",
+    name = "Deep-netherrack towering stalagmite",
     deco_type = "schematic",
     place_on = "nether:rack_deep",
     sidelen = 80,
     fill_ratio = 0.001,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
+    y_max = nether.DEPTH_CEILING,
     y_min = nether.DEPTH_FLOOR,
-    schematic = schematic_BasaltStalagmite,
-    flags = "place_center_x,place_center_z,force_placement,all_floors",
-    place_offset_y=-2
-})]]
-
-minetest.register_decoration({
-    name = "Deep-netherrack stalagmite",
-    deco_type = "schematic",
-    place_on = "nether:rack_deep",
-    sidelen = 80,
-    fill_ratio = 0.001,
-    biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
-    y_min = nether.DEPTH_FLOOR,
-    schematic = schematic_BasaltStalagmite,
+    schematic = schematic_ToweringStalagmite,
     replacements = {["nether:basalt"] = "nether:rack_deep"},
     flags = "place_center_x,place_center_z,force_placement,all_floors",
     place_offset_y=-2

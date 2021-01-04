@@ -538,9 +538,8 @@ minetest.register_chatcommand("nether_whereami",
 			elseif -densityNoise > tcave then
 				desc = "Negative nether"
 			elseif math_abs(densityNoise) < tmantle then
-				desc =  "Nether Core"
+				desc =  "Mantle"
 
-				local cavern_noise_adj = CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance)
 				if math_abs(densityNoise) + cavern_noise_adj < CENTER_CAVERN_LIMIT then
 					desc =  desc .. " inside cavern"
 				else

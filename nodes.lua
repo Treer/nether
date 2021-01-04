@@ -305,8 +305,8 @@ lavasea_source.tiles = {
 			length   = 3.0,
 		},
 	},
-	liquid_alternative_source = "nether:lava_source",
 }
+lavasea_source.liquid_alternative_source = "nether:lava_source"
 lavasea_source.inventory_image = minetest.inventorycube(
 	"nether_lava_source_animated.png^[sheet:2x16:0,0",
 	"nether_lava_source_animated.png^[sheet:2x16:0,1",
