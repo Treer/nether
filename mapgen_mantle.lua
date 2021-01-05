@@ -2,12 +2,12 @@
 
   Nether mod for minetest
 
-  "mapgen_mantle.lua" contains helper functions for generating the Mantle
-  (AKA center region), and are moved into a separate file to keep the
+  This file contains helper functions for generating the Mantle
+  (AKA center region), which are moved into a separate file to keep the
   size of mapgen.lua manageable.
 
 
-  Copyright (C) 2020 Treer
+  Copyright (C) 2021 Treer
 
   Permission to use, copy, modify, and/or distribute this software for
   any purpose with or without fee is hereby granted, provided that the
@@ -194,8 +194,8 @@ function generate_waypoints(pos1, pos2, minp, maxp)
 	local pathVec     = vector.subtract(pos2, pos1)
 	local pathVecNorm = vector.normalize(pathVec)
 	local pathLength  = vector.distance(pos1, pos2)
-	local minBound = vector.add(minp, minDistanceFromChunkWall)
-	local maxBound = vector.subtract(maxp, minDistanceFromChunkWall)
+	local minBound    = vector.add(minp, minDistanceFromChunkWall)
+	local maxBound    = vector.subtract(maxp, minDistanceFromChunkWall)
 
 	local result = {}
 	result[1] = pos1
@@ -247,6 +247,7 @@ function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 		local segmentStart = waypoints[segmentIndex]
 		local segmentVector = vector.subtract(waypoints[segmentIndex + 1], segmentStart)
 		local pos = vector.round(vector.add(segmentStart, vector.multiply(segmentVector, segmentInterp)))
+
 		if not vector.equals(pos, last_pos) then
 			local vi = area:indexp(pos)
 			local node_id = data[vi]

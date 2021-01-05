@@ -557,43 +557,46 @@ local function on_generated(minp, maxp, seed)
 
 				elseif -cave_noise > tcave then
 					-- Secondary/spare region
-					-- This secondary region is unused, until someone decides to do something cool or novel with it.
+					-- This secondary region is unused until someone decides to do something cool or novel with it.
 					-- Reaching here would require the player to first find and journey through the central region,
 					-- as it's always separated from the Prime region by the central region.
 
 					data[vi] = c_netherrack -- For now I've just left this region as solid netherrack instead of air.
 
-					-- Only set contains_nether to true if you want tunnels created between the secondary region
+					-- Only set contains_nether to true here if you want tunnels created between the secondary region
 					-- and the central region.
 					--contains_nether = true
 					--data[vi] = c_air
 				else
 					-- netherrack walls and/or center region/mantle
-					local id = data[vi] -- Existing node
 					abs_cave_noise = math_abs(cave_noise)
 
 					-- abs_cave_noise_adjusted makes the center region smaller as distance from the lava ocean
 					-- increases, we do this by pretending the abs_cave_noise value is higher.
 					abs_cave_noise_adjusted = abs_cave_noise + cavern_noise_adj
 
-					if above_lavasea and abs_cave_noise_adjusted < CENTER_CAVERN_LIMIT then
+					if abs_cave_noise_adjusted >= CENTER_CAVERN_LIMIT then
+
+						local id = data[vi] -- Check existing node to avoid removing dungeons
+						if id == c_air or id == c_native_mapgen then
+							if abs_cave_noise < tmantle then
+								data[vi] = c_netherrack_deep
+							else
+								-- the shell seperating the mantle from the rest of the nether...
+								data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
+								contains_shell = true
+							end
+						end
+
+					elseif above_lavasea then
 						data[vi] = c_air
 						contains_mantle = true
 					elseif abs_cave_noise_adjusted < SURFACE_CRUST_LIMIT or (below_lavasea and abs_cave_noise_adjusted < CRUST_LIMIT) then
 						data[vi] = c_lavasea_source
 						contains_ocean = true
-					elseif abs_cave_noise_adjusted < CENTER_CAVERN_LIMIT then
+					else
 						data[vi] = c_lava_crust
 						contains_ocean = true
-					elseif id == c_air or id == c_native_mapgen then
-
-						if abs_cave_noise < tmantle then
-							data[vi] = c_netherrack_deep
-						else
-							-- the shell seperating the mantle from the rest of the nether...
-							data[vi] = c_netherrack -- excavate_dungeons() will mostly reverse this inside dungeons
-							contains_shell = true
-						end
 					end
 				end
 
@@ -605,12 +608,12 @@ local function on_generated(minp, maxp, seed)
 	end
 
 	if contains_mantle or contains_ocean then
-		mapgen.add_basalt_columns(data, area, minp, maxp)
+		mapgen.add_basalt_columns(data, area, minp, maxp) -- function provided by mapgen_mantle.lua
 	end
 
 	if contains_nether and contains_mantle then
 		tunnelCandidate_count = tunnelCandidate_count + 1
-		local success = mapgen.excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp)
+		local success = mapgen.excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, maxp) -- function provided by mapgen_mantle.lua
 		if success then tunnel_count = tunnel_count + 1 end
 	end
 	total_chunk_count = total_chunk_count + 1
