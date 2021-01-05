@@ -37,6 +37,14 @@ local BASALT_COLUMN_UPPER_LIMIT = CENTER_CAVERN_LIMIT * 0.9       -- Basalt colu
 local BASALT_COLUMN_LOWER_LIMIT = CENTER_CAVERN_LIMIT * 0.25      -- This value is close to SURFACE_CRUST_LIMIT so basalt columns give way to "flowing" lava rivers
 
 
+-- Shared Nether mapgen namespace
+-- For mapgen files to share functions and variables
+nether.mapgen = {}
+local mapgen = nether.mapgen
+
+mapgen.ore_ceiling = NETHER_CEILING - BLEND -- leave a solid 128 node cap of netherrack before introducing ores
+mapgen.ore_floor   = NETHER_FLOOR   + BLEND
+
 
 local debugf = nether.debug
 
@@ -182,8 +190,8 @@ minetest.register_ore({
 	clust_scarcity = 11 * 11 * 11,
 	clust_num_ores = 3,
 	clust_size     = 2,
-	y_max = NETHER_CEILING,
-	y_min = NETHER_FLOOR,
+	y_max = mapgen.ore_ceiling,
+	y_min = mapgen.ore_floor
 })
 
 minetest.register_ore({
@@ -193,8 +201,8 @@ minetest.register_ore({
 	clust_scarcity = 36 * 36 * 36,
 	clust_num_ores = 4,
 	clust_size     = 2,
-	y_max = NETHER_CEILING,
-	y_min = NETHER_FLOOR,
+	y_max = mapgen.ore_ceiling,
+	y_min = mapgen.ore_floor
 })
 
 minetest.register_ore({
@@ -204,8 +212,8 @@ minetest.register_ore({
 	clust_scarcity = 16 * 16 * 16,
 	clust_num_ores = 4,
 	clust_size     = 2,
-	y_max = NETHER_CEILING,
-	y_min = NETHER_FLOOR,
+	y_max = mapgen.ore_ceiling,
+	y_min = mapgen.ore_floor
 })
 
 minetest.register_ore({
@@ -215,8 +223,8 @@ minetest.register_ore({
 	clust_scarcity = 36 * 36 * 36,
 	clust_num_ores = 4,
 	clust_size     = 2,
-	y_max = NETHER_CEILING,
-	y_min = NETHER_FLOOR,
+	y_max = mapgen.ore_ceiling,
+	y_min = mapgen.ore_floor
 })
 
 minetest.register_ore({
@@ -225,8 +233,8 @@ minetest.register_ore({
 	wherein         = "nether:rack",
 	clust_scarcity  = 14 * 14 * 14,
 	clust_size      = 8,
-	y_max = NETHER_CEILING,
-	y_min = NETHER_FLOOR
+	y_max = mapgen.ore_ceiling,
+	y_min = mapgen.ore_floor
 })
 
 
@@ -265,8 +273,6 @@ local nbuf_cave = {}
 local nbuf_basalt = {}
 local dbuf = {}
 
-local yblmin = NETHER_FLOOR   + BLEND * 2
-local yblmax = NETHER_CEILING - BLEND * 2
 
 -- Content ids
 
@@ -485,7 +491,7 @@ end
 -- the fractional distance from ceiling or sea floor is a value between 0 and 1 (inclusive)
 -- Note it may find the most relevent sea-level - not necesssarily the one you are closest
 -- to, since the space above the sea reaches much higher than the depth below the sea.
-local function find_nearest_lava_sealevel(y)
+mapgen.find_nearest_lava_sealevel = function(y)
 	-- todo: put oceans near the bottom of chunks to improve ability to generate tunnels to the center
 	-- todo: constrain y to be not near the bounds of the nether
 	-- todo: add some random adj at each level, seeded only by the level height
@@ -501,6 +507,37 @@ local function find_nearest_lava_sealevel(y)
 	end
 
 	return sealevel, cavern_limits_fraction
+end
+
+
+local yblmin = NETHER_FLOOR   + BLEND * 2
+local yblmax = NETHER_CEILING - BLEND * 2
+-- At both the top and bottom of the Nether, as set by NETHER_CEILING and NETHER_FLOOR,
+-- there is a 128 deep cap of solid netherrack, followed by a 128-deep blending zone
+-- where Nether caverns may start to appear.
+-- The solid zones and blending zones are achieved by adjusting the np_cave noise to be
+-- outside the range where caverns form, this function returns that adjustment.
+--
+-- Returns two values: the noise limit adjustment for nether caverns, and the
+-- noise limit adjustment for the central region / mantle caverns
+mapgen.get_mapgenblend_adjustments = function (y)
+
+	-- floorAndCeilingBlend will normally be 0, but shifts toward 1 in the
+	-- blending zone, and goes higher than 1 in the solid zone between the
+	-- blending zone and the end of the nether.
+	local floorAndCeilingBlend = 0
+	if y > yblmax then floorAndCeilingBlend = ((y - yblmax) / BLEND) ^ 2 end
+	if y < yblmin then floorAndCeilingBlend = ((yblmin - y) / BLEND) ^ 2 end
+
+	-- the nether caverns exist when np_cave noise is greater than TCAVE, so
+	-- to fade out the nether caverns, adjust TCAVE upward.
+	local tcave_adj               = floorAndCeilingBlend
+
+	-- the central regions exists when np_cave noise is below CENTER_REGION_LIMIT,
+	-- so to fade out the mantle caverns adjust CENTER_REGION_LIMIT downward.
+	local centerRegionLimit_adj = -(CENTER_REGION_LIMIT * floorAndCeilingBlend)
+
+	return tcave_adj, centerRegionLimit_adj
 end
 
 
@@ -521,15 +558,13 @@ minetest.register_chatcommand("nether_whereami",
 
 			caveperlin = caveperlin or minetest.get_perlin(np_cave)
 			local densityNoise = caveperlin:get_3d(pos)
-			local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(pos.y)
-			local floorAndCeilingBlend = 0 -- normally 0, goes to 1 or higher if y gets too close to the ceiling
-			if pos.y > yblmax then floorAndCeilingBlend = ((pos.y - yblmax) / BLEND) ^ 2 end
-			if pos.y < yblmin then floorAndCeilingBlend = ((yblmin - pos.y) / BLEND) ^ 2 end
-			local tcave   = TCAVE + floorAndCeilingBlend
-			local tmantle = CENTER_REGION_LIMIT - (CENTER_REGION_LIMIT * floorAndCeilingBlend)
+			local sea_level, cavern_limit_distance = mapgen.find_nearest_lava_sealevel(pos.y)
+			local tcave_adj, centerRegionLimit_adj = mapgen.get_mapgenblend_adjustments(pos.y)
+			local tcave   = TCAVE + tcave_adj
+			local tmantle = CENTER_REGION_LIMIT + centerRegionLimit_adj
 			local cavern_noise_adj =
-				CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) +
-				CENTER_REGION_LIMIT * floorAndCeilingBlend
+				CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) -
+				centerRegionLimit_adj -- cavern_noise_adj gets added to noise value instead of added to the limit np_noise is compared against, so subtract centerRegionLimit_adj so subtract centerRegionLimit_adj instead of adding
 
 			local desc
 
@@ -559,7 +594,7 @@ minetest.register_chatcommand("nether_whereami",
 				desc = desc .. ", " .. sea_pos .. "m below lava-sea level"
 			end
 
-			if floorAndCeilingBlend > 0 then
+			if tcave_adj > 0 then
 				desc = desc .. ", approaching y boundary of Nether"
 			end
 
@@ -585,7 +620,7 @@ function add_basalt_columns(data, area, minp, maxp)
 	nobj_basalt = nobj_basalt or minetest.get_perlin_map(np_basalt, {x = yCaveStride, y = yCaveStride})
 	local nvals_basalt = nobj_basalt:get_2d_map_flat({x=minp.x, y=minp.z}, {x=yCaveStride, y=yCaveStride}, nbuf_basalt)
 
-	local nearest_sea_level, _ = find_nearest_lava_sealevel(math_floor((y0 + y1) / 2))
+	local nearest_sea_level, _ = mapgen.find_nearest_lava_sealevel(math_floor((y0 + y1) / 2))
 
 	local leeway = CENTER_CAVERN_LIMIT * 0.18
 
@@ -788,7 +823,7 @@ function excavate_pathway(data, area, nether_pos, center_pos, minp, maxp)
 	end
 
 	-- Third pass: decorate
-	-- Add glowstones to make tunnel entrances easyier to find
+	-- Add glowstones to make tunnels to the mantle easyier to find
 	-- https://i.imgur.com/sRA28x7.jpg
 	for i = start_index, stop_index, 3 do
 		if linedata[i].distFromEnds < 0.3 then
@@ -829,7 +864,7 @@ function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, m
 	local vi, ni
 
 	for y = 0, extent.y - 1, skip do
-		local sealevel = find_nearest_lava_sealevel(minp.y + y)
+		local sealevel = mapgen.find_nearest_lava_sealevel(minp.y + y)
 
 		if minp.y + y > sealevel then -- only create tunnels above sea level
 			for z = 0, extent.z - 1, skip do
@@ -857,14 +892,11 @@ function excavate_tunnel_to_center_of_the_nether(data, area, nvals_cave, minp, m
 	if lowest < CENTER_CAVERN_LIMIT and highest > TCAVE + 0.03 then
 
 		local mantle_y = area:position(lowest_vi).y
-		local sealevel, cavern_limit_distance = find_nearest_lava_sealevel(mantle_y)
-
-		local floorAndCeilingBlend = 0
-		if mantle_y > yblmax then floorAndCeilingBlend = ((mantle_y - yblmax) / BLEND) ^ 2 end
-		if mantle_y < yblmin then floorAndCeilingBlend = ((yblmin - mantle_y) / BLEND) ^ 2 end
+		local sealevel, cavern_limit_distance = mapgen.find_nearest_lava_sealevel(mantle_y)
+		local _, centerRegionLimit_adj = mapgen.get_mapgenblend_adjustments(mantle_y)
 		local cavern_noise_adj =
-			CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) +
-			CENTER_REGION_LIMIT * floorAndCeilingBlend
+			CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) -
+			centerRegionLimit_adj -- cavern_noise_adj gets added to noise value instead of added to the limit np_noise is compared against, so subtract centerRegionLimit_adj instead of adding
 
 		if lowest + cavern_noise_adj < CENTER_CAVERN_LIMIT then
 			excavate_pathway(data, area, area:position(highest_vi), area:position(lowest_vi), minp, maxp)
@@ -910,19 +942,16 @@ local function on_generated(minp, maxp, seed)
 
 	for y = y0, y1 do -- Y loop first to minimise tcave & lava-sea calculations
 
-		local floorAndCeilingBlend = 0 -- normally 0, goes to 1 or higher if y gets too close to the ceiling
-		if y > yblmax then floorAndCeilingBlend = ((y - yblmax) / BLEND) ^ 2 end
-		if y < yblmin then floorAndCeilingBlend = ((yblmin - y) / BLEND) ^ 2 end
-		local tcave   = TCAVE + floorAndCeilingBlend
-		local tmantle = CENTER_REGION_LIMIT - (CENTER_REGION_LIMIT * floorAndCeilingBlend) -- cavern_noise_adj already contains floorAndCeilingBlend, so tmantle is only for comparisons when cavern_noise_adj hasn't been added to the noise value
-
-		local sea_level, cavern_limit_distance = find_nearest_lava_sealevel(y)
+		local sea_level, cavern_limit_distance = mapgen.find_nearest_lava_sealevel(y)
 		local above_lavasea = y > sea_level
 		local below_lavasea = y < sea_level
-		local cavern_noise_adj =
-			CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) +
-			CENTER_REGION_LIMIT * floorAndCeilingBlend
 
+		local tcave_adj, centerRegionLimit_adj = mapgen.get_mapgenblend_adjustments(y)
+		local tcave   = TCAVE + tcave_adj
+		local tmantle = CENTER_REGION_LIMIT + centerRegionLimit_adj -- cavern_noise_adj already contains central_region_limit_adj, so tmantle is only for comparisons when cavern_noise_adj hasn't been added to the noise value
+		local cavern_noise_adj =
+			CENTER_REGION_LIMIT * (cavern_limit_distance * cavern_limit_distance * cavern_limit_distance) -
+			centerRegionLimit_adj -- cavern_noise_adj gets added to noise value instead of added to the limit np_noise is compared against, so subtract centerRegionLimit_adj so subtract centerRegionLimit_adj instead of adding
 
 		for z = z0, z1 do
 			local vi = area:index(x0, y, z) -- Initial voxelmanip index
