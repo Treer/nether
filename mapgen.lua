@@ -45,7 +45,6 @@ local mapgen = nether.mapgen
 mapgen.ore_ceiling = NETHER_CEILING - BLEND -- leave a solid 128 node cap of netherrack before introducing ores
 mapgen.ore_floor   = NETHER_FLOOR   + BLEND
 
-
 local debugf = nether.debug
 
 if minetest.read_schematic == nil then
@@ -484,32 +483,6 @@ function decorate_dungeons(data, area, rooms)
 end
 
 
--- Mantle (AKA Center region) mapgen functions
-
-
--- Returns (absolute height, fractional distance from ceiling or sea floor)
--- the fractional distance from ceiling or sea floor is a value between 0 and 1 (inclusive)
--- Note it may find the most relevent sea-level - not necesssarily the one you are closest
--- to, since the space above the sea reaches much higher than the depth below the sea.
-mapgen.find_nearest_lava_sealevel = function(y)
-	-- todo: put oceans near the bottom of chunks to improve ability to generate tunnels to the center
-	-- todo: constrain y to be not near the bounds of the nether
-	-- todo: add some random adj at each level, seeded only by the level height
-	local sealevel = math.floor((y + 100) / 200) * 200
-
-	local cavern_limits_fraction
-	local height_above_sea = y - sealevel
-	if height_above_sea >= 0 then
-		cavern_limits_fraction = math_min(1, height_above_sea / 95)
-	else
-		-- approaches 1 much faster as the lava sea is shallower than the cavern above it
-		cavern_limits_fraction = math_min(1, -height_above_sea / 40)
-	end
-
-	return sealevel, cavern_limits_fraction
-end
-
-
 local yblmin = NETHER_FLOOR   + BLEND * 2
 local yblmax = NETHER_CEILING - BLEND * 2
 -- At both the top and bottom of the Nether, as set by NETHER_CEILING and NETHER_FLOOR,
@@ -520,7 +493,7 @@ local yblmax = NETHER_CEILING - BLEND * 2
 --
 -- Returns two values: the noise limit adjustment for nether caverns, and the
 -- noise limit adjustment for the central region / mantle caverns
-mapgen.get_mapgenblend_adjustments = function (y)
+mapgen.get_mapgenblend_adjustments = function(y)
 
 	-- floorAndCeilingBlend will normally be 0, but shifts toward 1 in the
 	-- blending zone, and goes higher than 1 in the solid zone between the
@@ -538,6 +511,34 @@ mapgen.get_mapgenblend_adjustments = function (y)
 	local centerRegionLimit_adj = -(CENTER_REGION_LIMIT * floorAndCeilingBlend)
 
 	return tcave_adj, centerRegionLimit_adj
+end
+
+
+-- Mantle (AKA Center region) mapgen functions
+
+
+-- Returns (absolute height, fractional distance from ceiling or sea floor)
+-- the fractional distance from ceiling or sea floor is a value between 0 and 1 (inclusive)
+-- Note it may find the most relevent sea-level - not necesssarily the one you are closest
+-- to, since the space above the sea reaches much higher than the depth below the sea.
+mapgen.find_nearest_lava_sealevel = function(y)
+	-- todo: put oceans near the bottom of chunks to improve ability to generate tunnels to the center
+	-- todo: constrain y to be not near the bounds of the nether
+	-- todo: add some random adj at each level, seeded only by the level height
+	local sealevel = math.floor((y + 100) / 200) * 200
+	--local sealevel = math.floor((y + 80) / 160) * 160
+	--local sealevel = math.floor((y + 120) / 240) * 240
+
+	local cavern_limits_fraction
+	local height_above_sea = y - sealevel
+	if height_above_sea >= 0 then
+		cavern_limits_fraction = math_min(1, height_above_sea / 95)
+	else
+		-- approaches 1 much faster as the lava sea is shallower than the cavern above it
+		cavern_limits_fraction = math_min(1, -height_above_sea / 40)
+	end
+
+	return sealevel, cavern_limits_fraction
 end
 
 
@@ -1039,8 +1040,7 @@ local function on_generated(minp, maxp, seed)
 	vm:set_data(data)
 
 	minetest.generate_ores(vm)
-	-- avoid generating decorations on the underside of the bottom of the nether
-	if minp.y > NETHER_FLOOR and maxp.y < NETHER_CEILING then minetest.generate_decorations(vm) end
+	minetest.generate_decorations(vm)
 
 	vm:set_lighting({day = 0, night = 0}, minp, maxp)
 	vm:calc_lighting()

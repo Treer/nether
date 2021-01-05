@@ -190,8 +190,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
 
 	vm:set_data(data)
 
-	-- avoid generating decorations on the underside of the bottom of the nether
-	if minp.y > NETHER_FLOOR and maxp.y < NETHER_CEILING then minetest.generate_decorations(vm) end
+	minetest.generate_decorations(vm)
 
 	vm:set_lighting({day = 0, night = 0}, minp, maxp)
 	vm:calc_lighting()

@@ -25,6 +25,11 @@
 -- emerged or not before the decoration was placed.
 local allow_lava_decorations = nether.useBiomes
 
+-- Keep compatibility with mapgen_nobiomes.lua, so hardcoding 128
+-- instead of using nether.mapgen.BLEND
+local decoration_ceiling = nether.DEPTH_CEILING - 128
+local decoration_floor   = nether.DEPTH_FLOOR   + 128
+
 local _  = {name = "air",                     prob = 0}
 local A  = {name = "air",                     prob = 255, force_place = true}
 local G  = {name = "nether:glowstone",        prob = 255, force_place = true}
@@ -126,8 +131,8 @@ minetest.register_decoration({
     sidelen = 80,
     fill_ratio = 0.0003,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_GlowstoneStalactite,
     flags = "place_center_x,place_center_z,force_placement,all_ceilings",
     place_offset_y=-3
@@ -140,8 +145,8 @@ minetest.register_decoration({
     sidelen = 80,
     fill_ratio = 0.0008,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_GlowstoneStalactite,
     replacements = {["nether:glowstone"] = "nether:rack"},
     flags = "place_center_x,place_center_z,all_ceilings",
@@ -281,8 +286,8 @@ minetest.register_decoration({
     sidelen = 80,
     fill_ratio = 0.0003,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_GlowstoneStalactite,
     replacements = {["nether:rack"] = "nether:rack_deep", ["nether:glowstone"] = "nether:glowstone_deep"},
     flags = "place_center_x,place_center_z,force_placement,all_ceilings",
@@ -296,8 +301,8 @@ minetest.register_decoration({
     sidelen = 40,
     fill_ratio = 0.15,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = {
         size = {x = 1, y = 4, z = 1},
         data = { G, G, G, G }
@@ -313,8 +318,8 @@ minetest.register_decoration({
     sidelen = 80,
     fill_ratio = 0.0003,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING, -- keep compatibility with mapgen_nobiomes.lua
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_GlowstoneStalactite,
     replacements = {["nether:rack"] = "nether:rack_deep", ["nether:glowstone"] = "nether:rack_deep"},
     flags = "place_center_x,place_center_z,force_placement,all_ceilings",
@@ -328,8 +333,8 @@ minetest.register_decoration({
     sidelen = 80,
     fill_ratio = 0.001,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH_CEILING,
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_ToweringStalagmite,
     replacements = {["nether:basalt"] = "nether:rack_deep"},
     flags = "place_center_x,place_center_z,force_placement,all_floors",
@@ -349,8 +354,8 @@ if allow_lava_decorations then
         sidelen = 80,
         fill_ratio = 0.002,
         biomes = {"nether_caverns"},
-        y_max = nether.DEPTH, -- keep compatibility with mapgen_nobiomes.lua
-        y_min = nether.DEPTH_FLOOR,
+        y_max = decoration_ceiling,
+        y_min = decoration_floor,
         schematic = {
             size = {x = 4, y = 7, z = 4},
             data = { -- note that data is upside down
@@ -451,8 +456,8 @@ minetest.register_decoration({
     sidelen = 80,
     fill_ratio = 0.005,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH,
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_fumarole,
     replacements = replacements_full,
     flags = "place_center_x,place_center_z,all_floors",
@@ -480,8 +485,8 @@ minetest.register_decoration({
     sidelen = 8,
     noise_params = fumarole_clump_noise,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH,
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_fumarole,
     replacements = replacements_full,
     flags = "place_center_x,place_center_z,all_floors",
@@ -496,8 +501,8 @@ minetest.register_decoration({
     sidelen = 8,
     noise_params = fumarole_clump_noise,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH,
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = schematic_fumarole,
     replacements = replacements_slab,
     flags = "place_center_x,place_center_z,all_floors",
@@ -512,8 +517,8 @@ minetest.register_decoration({
     sidelen = 8,
     noise_params = fumarole_clump_noise,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH,
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = {
         size = {x = 4, y = 4, z = 4},
         data = { -- note that data is upside down
@@ -551,8 +556,8 @@ minetest.register_decoration({
     sidelen = 8,
     noise_params = fumarole_clump_noise,
     biomes = {"nether_caverns"},
-    y_max = nether.DEPTH,
-    y_min = nether.DEPTH_FLOOR,
+    y_max = decoration_ceiling,
+    y_min = decoration_floor,
     schematic = {
         size = {x = 4, y = 5, z = 4},
         data = { -- note that data is upside down
