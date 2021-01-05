@@ -2,6 +2,12 @@
 
   Nether mod for minetest
 
+  "mapgen_nobiomes.lua" is the legacy version of the mapgen, only used
+    in older versions of Minetest or in v6 worlds.
+  "mapgen.lua" is the modern biomes-based Nether mapgen, which
+    requires Minetest v5.1 or greater
+
+
   Copyright (C) 2013 PilzAdam
 
   Permission to use, copy, modify, and/or distribute this software for

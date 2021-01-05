@@ -2,6 +2,12 @@
 
   Nether mod for minetest
 
+  "mapgen.lua" is the modern biomes-based Nether mapgen, which
+    requires Minetest v5.1 or greater
+  "mapgen_nobiomes.lua" is the legacy version of the mapgen, only used
+    in older versions of Minetest or in v6 worlds.
+
+
   Copyright (C) 2013 PilzAdam
 
   Permission to use, copy, modify, and/or distribute this software for
@@ -41,6 +47,9 @@ local BASALT_COLUMN_LOWER_LIMIT = CENTER_CAVERN_LIMIT * 0.25      -- This value 
 -- For mapgen files to share functions and variables
 nether.mapgen = {}
 local mapgen = nether.mapgen
+
+mapgen.TCAVE = TCAVE
+mapgen.BLEND = BLEND
 
 mapgen.ore_ceiling = NETHER_CEILING - BLEND -- leave a solid 128 node cap of netherrack before introducing ores
 mapgen.ore_floor   = NETHER_FLOOR   + BLEND
@@ -241,7 +250,7 @@ minetest.register_ore({
 
 -- 3D noise
 
-local np_cave = {
+mapgen.np_cave = {
 	offset = 0,
 	scale = 1,
 	spread = {x = 384, y = 128, z = 384}, -- squashed 3:1
@@ -542,7 +551,7 @@ mapgen.find_nearest_lava_sealevel = function(y)
 end
 
 
-local caveperlin = nil
+local cavePerlin = nil
 minetest.register_chatcommand("nether_whereami",
     {
 		description = "Describes which region of the nether the player is in",
@@ -557,8 +566,8 @@ minetest.register_chatcommand("nether_whereami",
 				return true, "The Overworld"
 			end
 
-			caveperlin = caveperlin or minetest.get_perlin(np_cave)
-			local densityNoise = caveperlin:get_3d(pos)
+			cavePerlin = cavePerlin or minetest.get_perlin(mapgen.np_cave)
+			local densityNoise = cavePerlin:get_3d(pos)
 			local sea_level, cavern_limit_distance = mapgen.find_nearest_lava_sealevel(pos.y)
 			local tcave_adj, centerRegionLimit_adj = mapgen.get_mapgenblend_adjustments(pos.y)
 			local tcave   = TCAVE + tcave_adj
@@ -617,7 +626,7 @@ function add_basalt_columns(data, area, minp, maxp)
 	local yStride = area.ystride
 	local yCaveStride = x1 - x0 + 1
 
-	local nobj_cave_point = minetest.get_perlin(np_cave)
+	cavePerlin = cavePerlin or minetest.get_perlin(mapgen.np_cave)
 	nobj_basalt = nobj_basalt or minetest.get_perlin_map(np_basalt, {x = yCaveStride, y = yCaveStride})
 	local nvals_basalt = nobj_basalt:get_2d_map_flat({x=minp.x, y=minp.z}, {x=yCaveStride, y=yCaveStride}, nbuf_basalt)
 
@@ -634,7 +643,7 @@ function add_basalt_columns(data, area, minp, maxp)
 			if basaltNoise > 0 then
 				-- a basalt column is here
 
-				local abs_sealevel_cave_noise = math_abs(nobj_cave_point:get3d({x = x, y = nearest_sea_level, z = z}))
+				local abs_sealevel_cave_noise = math_abs(cavePerlin:get3d({x = x, y = nearest_sea_level, z = z}))
 
 				-- Add Some quick deterministic noise to the column heights
 				-- This is probably not good noise, but it doesn't have to be.
@@ -929,7 +938,7 @@ local function on_generated(minp, maxp, seed)
 	local zCaveStride = yCaveStride * yCaveStride
 	local chulens = {x = yCaveStride, y = yCaveStride, z = yCaveStride}
 
-	nobj_cave = nobj_cave or minetest.get_perlin_map(np_cave, chulens)
+	nobj_cave = nobj_cave or minetest.get_perlin_map(mapgen.np_cave, chulens)
 	local nvals_cave = nobj_cave:get_3d_map_flat(minp, nbuf_cave)
 
 	local dungeonRooms = build_dungeon_room_list(data, area)
@@ -1052,7 +1061,7 @@ end
 -- use knowledge of the nether mapgen algorithm to return a suitable ground level for placing a portal.
 -- player_name is optional, allowing a player to spawn a remote portal in their own protected areas.
 function nether.find_nether_ground_y(target_x, target_z, start_y, player_name)
-	local nobj_cave_point = minetest.get_perlin(np_cave)
+	local nobj_cave_point = minetest.get_perlin(mapgen.np_cave)
 	local air = 0 -- Consecutive air nodes found
 
 	local minp_schem, maxp_schem = nether.get_schematic_volume({x = target_x, y = 0, z = target_z}, nil, "nether_portal")
