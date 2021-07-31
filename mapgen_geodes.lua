@@ -33,6 +33,8 @@ local mapgen = nether.mapgen
 
 local c_air              = minetest.get_content_id("air")
 local c_crystal          = minetest.get_content_id("nether:geodelite") -- geodelite has a faint glow
+local c_crystal2          = minetest.get_content_id("nether:geodetint1") -- geodelite has a faint glow
+local c_crystal3          = minetest.get_content_id("nether:geodetint2") -- geodelite has a faint glow
 local c_netherrack       = minetest.get_content_id("nether:rack")
 local c_glowstone        = minetest.get_content_id("nether:glowstone")
 
@@ -197,9 +199,13 @@ mapgen.getGeodeInteriorNodeId = function(x, y, z)
 
 	insertionSort(distSquaredList)
 
-	local d3_1 = distSquaredList[3] - distSquaredList[1]
-	local d3_2 = distSquaredList[3] - distSquaredList[2]
-	--local d4_1 = distSquaredList[4] - distSquaredList[1]
+	local distSquared1 = distSquaredList[1]
+	local distSquared3 = distSquaredList[3]
+
+	local d3_1 = distSquared3 - distSquared1
+	local d3_2 = distSquared3 - distSquaredList[2]
+	local d4_1 = distSquaredList[4] - distSquared1
+	--local d5_1 = distSquaredList[5] - distSquared1
 	--local d4_3 = distSquaredList[4] - distSquaredList[3]
 
 	-- Some shape formulas (tuned for a structureSize of 50)
@@ -211,9 +217,16 @@ mapgen.getGeodeInteriorNodeId = function(x, y, z)
 	-- The idea is voronoi based - edges in a voronoi diagram are where each nearby point is at equal distance.
 	-- In this case we use squared distances to avoid calculating square roots.
 
-	if (d3_1 < 0.05 or d3_2 < .02) and distSquaredList[1] > .3 then
-		return c_crystal
-	elseif (distSquaredList[4] - distSquaredList[1]) < 0.08 then
+	if (d3_1 < 0.05 or d3_2 < .02) and distSquared1 > .3 then
+
+		if math_abs(((cell_x - cell_z) % 0.3) - (cell_y % 1)) < .04 then
+			return c_crystal3
+		elseif distSquared1 > 0.32 or d4_1 < .325 then
+			return c_crystal
+		else
+			return c_crystal2
+		end
+	elseif d4_1 < 0.08 then
 		return c_glowstone
 	else
 		return c_air
