@@ -53,12 +53,12 @@ local nbuf_basalt = {}
 
 -- Content ids
 
-local c_air              = minetest.get_content_id("air")
-local c_netherrack_deep  = minetest.get_content_id("nether:rack_deep")
-local c_glowstone        = minetest.get_content_id("nether:glowstone")
-local c_lavasea_source   = minetest.get_content_id("nether:lava_source") -- same as lava but with staggered animation to look better as an ocean
-local c_lava_crust       = minetest.get_content_id("nether:lava_crust")
-local c_basalt           = minetest.get_content_id("nether:basalt")
+local c_air              = nether.get_content_id("air")
+local c_netherrack_deep  = nether.get_content_id("nether:rack_deep")
+local c_glowstone        = nether.get_content_id("nether:glowstone")
+local c_lavasea_source   = nether.get_content_id("nether:lava_source") -- same as lava but with staggered animation to look better as an ocean
+local c_lava_crust       = nether.get_content_id("nether:lava_crust")
+local c_basalt           = nether.get_content_id("nether:basalt")
 
 
 -- Math funcs

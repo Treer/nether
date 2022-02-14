@@ -30,16 +30,16 @@ minetest.set_gen_notify({dungeon = true})
 
 -- Content ids
 
-local c_air              = minetest.get_content_id("air")
-local c_netherrack       = minetest.get_content_id("nether:rack")
-local c_netherrack_deep  = minetest.get_content_id("nether:rack_deep")
-local c_dungeonbrick     = minetest.get_content_id("nether:brick")
-local c_dungeonbrick_alt = minetest.get_content_id("nether:brick_cracked")
-local c_netherbrick_slab = minetest.get_content_id("stairs:slab_nether_brick")
-local c_netherfence      = minetest.get_content_id("nether:fence_nether_brick")
-local c_glowstone        = minetest.get_content_id("nether:glowstone")
-local c_glowstone_deep   = minetest.get_content_id("nether:glowstone_deep")
-local c_lava_source      = minetest.get_content_id("default:lava_source")
+local c_air              = nether.get_content_id("air")
+local c_netherrack       = nether.get_content_id("nether:rack")
+local c_netherrack_deep  = nether.get_content_id("nether:rack_deep")
+local c_dungeonbrick     = nether.get_content_id("nether:brick")
+local c_dungeonbrick_alt = nether.get_content_id("nether:brick_cracked")
+local c_netherbrick_slab = nether.get_content_id("stairs:slab_nether_brick")
+local c_netherfence      = nether.get_content_id("nether:fence_nether_brick")
+local c_glowstone        = nether.get_content_id("nether:glowstone")
+local c_glowstone_deep   = nether.get_content_id("nether:glowstone_deep")
+local c_lava_source      = nether.get_content_id("default:lava_source")
 
 
 -- Misc math functions
@@ -79,7 +79,7 @@ nether.mapgen.build_dungeon_room_list = function(data, area)
 		if area:containsp(roomPos) then -- this safety check does not appear to be necessary, but lets make it explicit
 
 			local room_vi = area:indexp(roomPos)
-			--data[room_vi] = minetest.get_content_id("default:torch") -- debug
+			--data[room_vi] = nether.get_content_id("default:torch") -- debug
 
 			local startPos = vector.new(roomPos)
 			if roomPos.y + 1 <= maxEdge.y and data[room_vi + yStride] == c_air then
@@ -229,7 +229,7 @@ nether.mapgen.decorate_dungeons = function(data, area, rooms)
 			   and window_y >= minEdge.y and window_y + 1 <= maxEdge.y
 			   and room_min.x > minEdge.x and room_max.x < maxEdge.x
 			   and room_min.z > minEdge.z and room_max.z < maxEdge.z then
-				--data[area:indexp(roomInfo)] = minetest.get_content_id("default:mese_post_light") -- debug
+				--data[area:indexp(roomInfo)] = nether.get_content_id("default:mese_post_light") -- debug
 
 				-- Can't use glass panes because they need the param data set.
 				-- Until whisper glass is added, every window will be made of netherbrick fence (rather

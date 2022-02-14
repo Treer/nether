@@ -131,6 +131,15 @@ if DEBUG_FLAGS == 0 then
 end
 
 
+-- Provide Minetest 5.2.0 fix
+nether.get_content_id = function(name)
+	-- Guards againt minetest.get_content_id() errors - in MT 5.2.0 it can error out of the
+	-- game if another mod (such as moreblocks) uses register_alias_force() on the node.
+	name = minetest.registered_aliases[name] or name
+	return minetest.get_content_id(name)
+end
+
+
 -- Load files
 dofile(nether.path .. "/portal_api.lua")
 dofile(nether.path .. "/nodes.lua")
